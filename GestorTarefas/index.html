@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciador de Tarefas</title>
+    <title>Gerenciador de Tarefas e Notas</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -58,8 +58,8 @@
             display: inline-block;
         }
         .status-em-andamento { background-color: #bfdbfe; color: #1e40af; }
-        .status-concluido { background-color: #d1fae5; color: #065f46; }
-        .status-passado { background-color: #fecaca; color: #991b1b; }
+        .status-concluida { background-color: #d1fae5; color: #065f46; } /* Updated */
+        .status-pausado { background-color: #fefcbf; color: #8a6500; } /* Updated */
 
         /* Priority Chips */
         .priority-chip {
@@ -82,7 +82,8 @@
             display: inline-block;
         }
         .expected-date-chip { background-color: #e0e7ff; color: #4338ca; } /* Indigo 100 / Indigo 700 */
-        .completed-date-chip { background-color: #d1fae5; color: #065f46; } /* Green 200 / Green 800 (similar to status-concluido but distinct) */
+        .expected-date-today-chip { background-color: #fee2e2; color: #991b1b; } /* Red for today's date */
+        .completed-date-chip { background-color: #d1fae5; color: #065f46; } /* Green 200 / Green 800 (similar to status-concluida but distinct) */
 
 
         /* Modal specific styles */
@@ -96,7 +97,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 1000;
+            /* Z-index ajustado para aparecer acima do note-app-container */
+            z-index: 3000;
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s ease, visibility 0.3s ease;
@@ -174,12 +176,12 @@
             cursor: pointer;
             transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
             min-width: 120px; /* Ensure enough width for text */
-            text-align: center;
+            text-align: left; /* Aligned to left */
         }
         /* Styles for the status select colors */
         .status-select-em-andamento { background-color: #bfdbfe; color: #1e40af; }
-        .status-select-concluido { background-color: #d1fae5; color: #065f46; }
-        .status-select-passado { background-color: #fecaca; color: #991b1b; }
+        .status-select-concluida { background-color: #d1fae5; color: #065f46; }
+        .status-select-pausado { background-color: #fefcbf; color: #8a6500; }
         .status-select:focus {
             outline: none;
             border-color: #6366f1;
@@ -210,8 +212,8 @@
         .toast.info { background-color: #3b82f6; }    /* Blue */
 
         @keyframes fadein {
-            from { opacity: 0; } /* Removed transform */
-            to { opacity: 1; }   /* Removed transform */
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         @keyframes fadeout {
             from { opacity: 1; transform: translateY(0); }
@@ -220,16 +222,153 @@
 
         /* Animation for new task list items */
         .task-item-enter {
-            opacity: 0; /* Removed transform */
+            opacity: 0;
         }
         .task-item-enter-active {
-            opacity: 1; /* Removed transform */
-            transition: opacity 0.5s ease-out; /* Only opacity transition */
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+
+        /* Note App Specific Styles */
+        #note-app-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #f0f2f5;
+            /* Z-index ajustado para ser menor que o modal-overlay */
+            z-index: 2000;
+            display: none; /* Hidden by default */
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            opacity: 0;
+            visibility: hidden;
+        }
+        #note-app-container.show {
+            display: flex;
+            opacity: 1;
+            visibility: visible;
+        }
+        #note-sidebar {
+            width: 250px;
+            background-color: #ffffff;
+            border-right: 1px solid #e5e7eb;
+            padding: 20px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        #note-content-area {
+            flex-grow: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        #note-editor {
+            flex-grow: 1;
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 1rem;
+            outline: none;
+            resize: vertical; /* Allow vertical resize */
+            background-color: #ffffff;
+            overflow-y: auto; /* Enable scroll for content */
+        }
+        .note-item {
+            padding: 10px;
+            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .note-item:hover {
+            background-color: #f3f4f6;
+        }
+        .note-item.active {
+            background-color: #e0e7ff; /* Indigo 100 */
+            font-weight: 600;
+        }
+        .note-item-title {
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .note-actions button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+        }
+        .note-actions button:hover {
+            background-color: #e5e7eb;
+        }
+        /* Note Toolbar Styles */
+        #note-toolbar-wrapper { /* New wrapper for toggle button and collapsible content */
+            margin-bottom: 15px;
+            background-color: #ffffff; /* Background for the whole toolbar area */
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 0; /* Removed padding from wrapper, moved to collapsible */
+            overflow: hidden; /* Hide overflow when collapsed */
+        }
+        #toggle-toolbar-btn {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 10px; /* Padding for the toggle button itself */
+            border: none;
+            background-color: transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #4b5563;
+        }
+        #toggle-toolbar-btn svg {
+            transition: transform 0.3s ease;
+        }
+        #note-toolbar-collapsible {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out; /* Animate padding too */
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 0 10px; /* Padding only when expanded */
+            padding-bottom: 0; /* Ensure no bottom padding when collapsed */
+        }
+        #note-toolbar-collapsible.expanded {
+            max-height: 200px; /* Sufficient height to show all controls */
+            padding-top: 8px; /* Add padding when expanded */
+            padding-bottom: 10px; /* Add padding when expanded */
+        }
+        #note-toolbar-collapsible button, #note-toolbar-collapsible select, #note-toolbar-collapsible input[type="color"] {
+            padding: 6px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background-color: #f9fafb;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        #note-toolbar-collapsible button:hover, #note-toolbar-collapsible select:hover {
+            background-color: #e5e7eb;
+        }
+        #note-toolbar-collapsible input[type="color"] {
+            width: 40px;
+            height: 32px;
+            padding: 0;
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div id="main-app-container" class="container">
         <div class="p-6 border-b border-gray-200">
             <h1 class="text-3xl font-bold text-gray-800 mb-1">Gerenciador de Tarefas</h1>
             <p class="text-gray-600">Organize suas tarefas por perfil.</p>
@@ -276,8 +415,8 @@
                         <label for="task-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                         <select id="task-status" class="form-select">
                             <option value="em-andamento">Em Andamento</option>
-                            <option value="concluido">Concluído</option>
-                            <option value="passado">Passado</option>
+                            <option value="concluida">Concluída</option>
+                            <option value="pausado">Pausado</option>
                         </select>
                     </div>
                     <div>
@@ -326,6 +465,59 @@
         </div>
     </div>
 
+    <div id="note-app-container" class="absolute w-full h-full flex flex-col md:flex-row rounded-lg shadow-xl overflow-hidden">
+        <div id="note-sidebar">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Notas</h3>
+            <button id="add-note-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg mb-4 shadow-md">
+                Adicionar Nova Nota
+            </button>
+            <div id="note-list" class="flex-grow overflow-y-auto divide-y divide-gray-200">
+                <p id="no-notes-message" class="text-center text-gray-500 py-4 hidden">Nenhuma nota para este perfil.</p>
+            </div>
+            <button id="close-note-app-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg mt-4 shadow-md">
+                Fechar Notas
+            </button>
+        </div>
+        <div id="note-content-area">
+            <input type="text" id="note-title-input" class="form-input mb-4 text-xl font-semibold" placeholder="Título da Nota">
+            <div id="note-toolbar-wrapper">
+                <button id="toggle-toolbar-btn">
+                    <span>Ferramentas de Formatação</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div id="note-toolbar-collapsible" class="w-full flex flex-wrap gap-2 pt-2">
+                    <select id="font-family-select" class="form-select">
+                        <option value="Arial">Arial</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Inter, sans-serif">Inter</option>
+                    </select>
+                    <select id="font-size-select" class="form-select">
+                        <option value="1">12px</option>
+                        <option value="2">14px</option>
+                        <option value="3" selected>16px</option>
+                        <option value="4">18px</option>
+                        <option value="5">20px</option>
+                        <option value="6">24px</option>
+                        <option value="7">28px</option>
+                    </select>
+                    <button id="bold-btn" class="p-2 border rounded-md hover:bg-gray-100 font-bold">B</button>
+                    <button id="italic-btn" class="p-2 border rounded-md hover:bg-gray-100 italic">I</button>
+                    <button id="underline-btn" class="p-2 border rounded-md hover:bg-gray-100 underline">U</button>
+                    <input type="color" id="font-color-picker" value="#000000">
+                </div>
+            </div>
+            <div id="note-editor" contenteditable="true" class="flex-grow w-full border border-gray-300 rounded-lg p-4 text-base bg-white overflow-y-auto" style="min-height: 200px;"></div>
+            <div class="flex justify-end gap-3 mt-4">
+                <button id="save-note-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
+                    Salvar Nota
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast-container"></div>
 
     <script type="module">
@@ -352,6 +544,7 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         // DOM Elements
+        const mainAppContainer = document.getElementById('main-app-container'); // Main task manager container
         const profileSelectionDiv = document.getElementById('profile-selection');
         const addTaskBtn = document.getElementById('add-task-btn');
         const showAllCompletedBtn = document.getElementById('show-all-completed-btn');
@@ -373,35 +566,57 @@
         const closeAllCompletedModalBtn = document.getElementById('close-all-completed-modal-btn');
         const toastContainer = document.getElementById('toast-container');
 
-        // Form Fields
-        const taskTitleInput = document.getElementById('task-title');
+        // New DOM Elements for Note App
+        const noteAppContainer = document.getElementById('note-app-container');
+        const addNoteBtn = document.getElementById('add-note-btn');
+        const noteList = document.getElementById('note-list');
+        const noNotesMessage = document.getElementById('no-notes-message');
+        const closeNoteAppBtn = document.getElementById('close-note-app-btn');
+        const noteTitleInput = document.getElementById('note-title-input'); // New note title input
+        const noteEditor = document.getElementById('note-editor'); // Changed to div contenteditable
+        const saveNoteBtn = document.getElementById('save-note-btn');
+        const fontFamilySelect = document.getElementById('font-family-select');
+        const fontSizeSelect = document.getElementById('font-size-select');
+        const boldBtn = document.getElementById('bold-btn');
+        const italicBtn = document.getElementById('italic-btn');
+        const underlineBtn = document.getElementById('underline-btn');
+        const fontColorPicker = document.getElementById('font-color-picker');
+        const toggleToolbarBtn = document.getElementById('toggle-toolbar-btn'); // New toggle button
+        const noteToolbarCollapsible = document.getElementById('note-toolbar-collapsible'); // Collapsible part of toolbar
+
+
+        // Form Fields (for tasks)
+        const taskTitleInputElem = document.getElementById('task-title'); // Renamed to avoid conflict
         const taskDescriptionInput = document.getElementById('task-description');
         const taskStatusSelect = document.getElementById('task-status');
         const taskPrioritySelect = document.getElementById('task-priority');
-        const expectedCompletionDateInput = document.getElementById('expected-completion-date'); // New date input
+        const expectedCompletionDateInput = document.getElementById('expected-completion-date');
 
         // App State
         let currentProfileId = null;
         let editingTaskId = null;
         let unsubscribeFromTasks = null;
+        let currentNoteId = null;
+        let unsubscribeFromNotes = null;
+
 
         // Pre-defined profiles data (hardcoded)
         const profilesData = [
             {
                 id: 'bianca',
-                name: 'Bianca',
+                name: 'Bianca Anjos',
                 role: 'Analista Sênior',
                 photo: 'bianca.png'
             },
             {
                 id: 'gizelle',
-                name: 'Gizelle',
+                name: 'Gizelle Mamede',
                 role: 'Analista Júnior',
                 photo: 'gizelle.png'
             },
             {
                 id: 'pedro',
-                name: 'Pedro',
+                name: 'Pedro Amorim',
                 role: 'Estagiário',
                 photo: 'pedro.png'
             }
@@ -412,7 +627,6 @@
             if (user) {
                 console.log("Usuário autenticado:", user.uid);
                 renderProfiles();
-                // Removed default profile selection. User must click to select.
             } else {
                 try {
                     await signInAnonymously(auth);
@@ -431,7 +645,18 @@
                 console.error("Nenhum perfil selecionado. Não é possível acessar o Firestore.");
                 return null;
             }
-            return collection(db, `artifacts/${appId}/public/data/${currentProfileId}`);
+            // Updated path for tasks: artifacts/{appId}/public/data/profiles/{profileId}/tasks
+            return collection(db, `artifacts/${appId}/public/data/profiles/${currentProfileId}/tasks`);
+        }
+
+        // Function to get the Firestore collection path for notes
+        function getNotesCollectionRef() {
+            if (!currentProfileId) {
+                console.error("Nenhum perfil selecionado. Não é possível acessar notas no Firestore.");
+                return null;
+            }
+            // Updated path for notes: artifacts/{appId}/public/data/profiles/{profileId}/notes
+            return collection(db, `artifacts/${appId}/public/data/profiles/${currentProfileId}/notes`);
         }
 
         // Get today's date in YYYY-MM-DD format
@@ -449,23 +674,23 @@
             return dateString === getTodayDateString();
         }
 
-        // Show modal
+        // Show modal (reusable for all modals)
         function showModal(modalElement) {
             modalElement.classList.add('show');
         }
 
-        // Hide modal
+        // Hide modal (reusable for all modals)
         function hideModal(modalElement) {
             modalElement.classList.remove('show');
         }
 
-        // Reset task form
+        // Reset task form fields
         function resetTaskForm() {
-            taskTitleInput.value = '';
+            taskTitleInputElem.value = '';
             taskDescriptionInput.value = '';
             taskStatusSelect.value = 'em-andamento';
             taskPrioritySelect.value = 'baixa';
-            expectedCompletionDateInput.value = ''; // Clear new date input
+            expectedCompletionDateInput.value = '';
             editingTaskId = null;
             modalTitle.textContent = 'Adicionar Nova Tarefa';
         }
@@ -477,7 +702,6 @@
             toast.textContent = message;
             toastContainer.appendChild(toast);
 
-            // Remove toast after 3 seconds
             setTimeout(() => {
                 toast.remove();
             }, 3000);
@@ -496,9 +720,23 @@
                     <img class="profile-image mb-2" src="${profile.photo}" alt="Foto de ${profile.name}" onerror="this.onerror=null;this.src='https://placehold.co/80x80/cccccc/000000?text=?'">
                     <h3 class="text-lg font-semibold text-gray-800">${profile.name}</h3>
                     <p class="text-sm text-gray-600">${profile.role}</p>
+                    <button data-profile-id="${profile.id}" class="open-notes-btn mt-3 p-2 rounded-full text-gray-600 hover:bg-gray-100 transition duration-200">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                    </button>
                 `;
-                profileCard.addEventListener('click', () => selectProfile(profile.id));
+                profileCard.addEventListener('click', (e) => {
+                    if (!e.target.closest('.open-notes-btn')) {
+                        selectProfile(profile.id);
+                    }
+                });
                 profileSelectionDiv.appendChild(profileCard);
+            });
+
+            document.querySelectorAll('.open-notes-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const profileId = e.currentTarget.dataset.profileId;
+                    openNoteApp(profileId);
+                });
             });
         }
 
@@ -506,7 +744,6 @@
         function selectProfile(profileId) {
             currentProfileId = profileId;
 
-            // Update active state for profile cards
             document.querySelectorAll('.profile-card').forEach(card => {
                 card.classList.remove('active');
             });
@@ -515,7 +752,6 @@
                 selectedProfileCard.classList.add('active');
             }
 
-            // Load tasks for the newly selected profile with default filtering
             loadTasks(currentProfileId);
         }
 
@@ -573,56 +809,49 @@
         // Update task status from the select dropdown
         async function updateTaskStatusFromSelect(taskId, newStatus) {
             const updates = { status: newStatus };
-            if (newStatus === 'concluido') {
-                updates.dateCompleted = getTodayDateString(); // Set date when completed
+            if (newStatus === 'concluida') {
+                updates.dateCompleted = getTodayDateString();
             } else {
-                updates.dateCompleted = null; // Clear date if status changes from completed
+                updates.dateCompleted = null;
             }
             await updateTask(taskId, updates);
         }
 
         // Load tasks from Firestore for the current profile (main list - filtered)
         async function loadTasks(profileId) {
-            // Unsubscribe from previous listener if exists
             if (unsubscribeFromTasks) {
                 unsubscribeFromTasks();
             }
 
             const tasksCollectionRef = getTasksCollectionRef();
             if (!tasksCollectionRef) {
-                console.error("Nenhum perfil selecionado. Não é possível obter a referência da coleção de tarefas.");
                 taskList.innerHTML = '';
                 noTasksMessage.classList.remove('hidden');
                 return;
             }
 
-            // Query all tasks for the selected profile
             const q = query(
                 tasksCollectionRef,
                 where("profileId", "==", profileId)
             );
 
-            // Listen for real-time updates
             unsubscribeFromTasks = onSnapshot(q, (snapshot) => {
                 let allTasks = [];
                 snapshot.forEach((doc) => {
                     allTasks.push({ id: doc.id, ...doc.data() });
                 });
 
-                // Sort tasks by createdAt in descending order (newest first) in JavaScript
                 allTasks.sort((a, b) => {
-                    // Ensure createdAt is a Date object (from Firestore Timestamp or existing Date)
                     const dateA = a.createdAt && typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate() : (a.createdAt instanceof Date ? a.createdAt : new Date(0));
                     const dateB = b.createdAt && typeof b.createdAt.toDate === 'function' ? b.createdAt.toDate() : (b.createdAt instanceof Date ? b.createdAt : new Date(0));
                     return dateB.getTime() - dateA.getTime();
                 });
 
-                // Filter for main display: Show non-completed tasks OR completed tasks from today
                 let filteredTasks = allTasks.filter(task => {
-                    return task.status !== 'concluido' || (task.status === 'concluido' && isToday(task.dateCompleted));
+                    return task.status !== 'concluida' || (task.status === 'concluida' && isToday(task.dateCompleted));
                 });
 
-                renderTasks(filteredTasks, taskList, noTasksMessage, true); // Pass true for main list actions
+                renderTasks(filteredTasks, taskList, noTasksMessage, true);
             }, (error) => {
                 console.error("Erro ao carregar tarefas:", error);
                 showToast("Erro ao carregar tarefas.", "error");
@@ -636,27 +865,25 @@
             const tasksCollectionRef = getTasksCollectionRef();
             if (!tasksCollectionRef) return;
 
-            // Query only completed tasks for the selected profile
             const q = query(
                 tasksCollectionRef,
                 where("profileId", "==", profileId),
-                where("status", "==", "concluido")
+                where("status", "==", "concluida")
             );
             try {
-                const querySnapshot = await getDocs(q); // One-time fetch
+                const querySnapshot = await getDocs(q);
                 const completedTasks = [];
                 querySnapshot.forEach((doc) => {
                     completedTasks.push({ id: doc.id, ...doc.data() });
                 });
 
-                // Sort completed tasks by dateCompleted in descending order (newest first) in JavaScript
                 completedTasks.sort((a, b) => {
                     const dateA = a.dateCompleted ? new Date(a.dateCompleted) : new Date(0);
                     const dateB = b.dateCompleted ? new Date(b.dateCompleted) : new Date(0);
                     return dateB.getTime() - dateA.getTime();
                 });
 
-                renderTasks(completedTasks, allCompletedTaskList, noAllCompletedTasksMessage, false); // Pass false for no actions in modal
+                renderTasks(completedTasks, allCompletedTaskList, noAllCompletedTasksMessage, false);
             } catch (error) {
                 console.error("Erro ao carregar todas as tarefas concluídas:", error);
                 showToast("Erro ao carregar todas as tarefas concluídas.", "error");
@@ -667,7 +894,7 @@
 
         // Render tasks to a given list element
         function renderTasks(tasks, targetListElement, targetNoTasksMessageElement, includeActions) {
-            targetListElement.innerHTML = ''; // Clear existing tasks
+            targetListElement.innerHTML = '';
 
             if (tasks.length === 0) {
                 targetNoTasksMessageElement.classList.remove('hidden');
@@ -678,23 +905,23 @@
 
             tasks.forEach(task => {
                 const taskListItem = document.createElement('div');
-                taskListItem.className = `task-list-item task-item-enter`; // Add initial animation class
+                taskListItem.className = `task-list-item task-item-enter`;
                 taskListItem.innerHTML = `
                     <div class="task-info">
                         <h3 class="text-lg font-medium text-gray-800">${task.title}</h3>
                         <p class="text-gray-600 text-sm">${task.description || 'Sem descrição'}</p>
                         <div class="flex items-center flex-wrap gap-2 mt-2">
                             <span class="priority-chip priority-${task.priority}" data-priority="${task.priority}">${getDisplayPriority(task.priority)}</span>
-                            ${task.expectedCompletionDate ? `<span class="date-chip expected-date-chip">Concluir até: ${formatDateDisplay(task.expectedCompletionDate)}</span>` : ''}
-                            ${task.status === 'concluido' && task.dateCompleted ? `<span class="date-chip completed-date-chip">Concluído em: ${formatDateDisplay(task.dateCompleted)}</span>` : ''}
+                            ${task.expectedCompletionDate ? `<span class="date-chip expected-date-chip ${isToday(task.expectedCompletionDate) ? 'expected-date-today-chip' : ''}">Concluir até: ${formatDateDisplay(task.expectedCompletionDate)}</span>` : ''}
+                            ${task.status === 'concluida' && task.dateCompleted ? `<span class="date-chip completed-date-chip">Concluída em: ${formatDateDisplay(task.dateCompleted)}</span>` : ''}
                         </div>
                     </div>
                     <div class="task-actions">
                         ${includeActions ? `
                             <select data-id="${task.id}" class="status-select ${getStatusSelectClass(task.status)}">
                                 <option value="em-andamento" ${task.status === 'em-andamento' ? 'selected' : ''}>Em Andamento</option>
-                                <option value="concluido" ${task.status === 'concluido' ? 'selected' : ''}>Concluido</option>
-                                <option value="passado" ${task.status === 'passado' ? 'selected' : ''}>Passado</option>
+                                <option value="concluida" ${task.status === 'concluida' ? 'selected' : ''}>Concluída</option>
+                                <option value="pausado" ${task.status === 'pausado' ? 'selected' : ''}>Pausado</option>
                             </select>
                             <button data-id="${task.id}" data-action="edit" class="edit-task-btn p-2 rounded-full text-indigo-600 hover:bg-indigo-100 transition duration-200">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
@@ -707,13 +934,11 @@
                 `;
                 targetListElement.appendChild(taskListItem);
 
-                // Trigger the animation
                 setTimeout(() => {
                     taskListItem.classList.add('task-item-enter-active');
-                }, 10); // Small delay to ensure CSS transition is applied
+                }, 10);
             });
 
-            // Add event listeners only if actions are included (for the main list)
             if (includeActions) {
                 addTaskListEventListeners();
             }
@@ -730,8 +955,8 @@
         function getStatusSelectClass(status) {
             switch (status) {
                 case 'em-andamento': return 'status-select-em-andamento';
-                case 'concluido': return 'status-select-concluido';
-                case 'passado': return 'status-select-passado';
+                case 'concluida': return 'status-select-concluida';
+                case 'pausado': return 'status-select-pausado';
                 default: return '';
             }
         }
@@ -746,16 +971,252 @@
             }
         }
 
+        // --- Note App Functions ---
 
-        // --- Event Listeners Setup ---
+        // Open the note app for a specific profile
+        function openNoteApp(profileId) {
+            if (!profileId) {
+                showToast("Selecione um perfil para abrir o aplicativo de notas.", "error");
+                return;
+            }
+            currentProfileId = profileId; // Ensure currentProfileId is set for notes
+            mainAppContainer.style.display = 'none'; // Hide task manager
+            noteAppContainer.classList.add('show'); // Show note app
+            loadNotes(profileId);
+            resetNoteEditor();
+            // Ensure contentEditable is active
+            noteEditor.focus();
+            document.execCommand('styleWithCSS', false, true); // Use inline CSS for formatting
+        }
 
-        // Add Task Button
+        // Close the note app
+        closeNoteAppBtn.addEventListener('click', () => {
+            noteAppContainer.classList.remove('show'); // Hide note app
+            mainAppContainer.style.display = 'flex'; // Show task manager
+            if (unsubscribeFromNotes) {
+                unsubscribeFromNotes(); // Unsubscribe from notes listener
+            }
+            currentNoteId = null; // Clear current note
+            resetNoteEditor(); // Reset editor state
+        });
+
+        // Load notes from Firestore for the current profile
+        async function loadNotes(profileId) {
+            if (unsubscribeFromNotes) {
+                unsubscribeFromNotes();
+            }
+
+            const notesCollectionRef = getNotesCollectionRef();
+            if (!notesCollectionRef) {
+                noteList.innerHTML = '';
+                noNotesMessage.classList.remove('hidden');
+                return;
+            }
+
+            const q = query(notesCollectionRef, where("profileId", "==", profileId)); // Filter notes by profileId
+
+            unsubscribeFromNotes = onSnapshot(q, (snapshot) => {
+                const notes = [];
+                snapshot.forEach(doc => {
+                    notes.push({ id: doc.id, ...doc.data() });
+                });
+                // Sort notes by creation date, newest first
+                notes.sort((a, b) => {
+                    const dateA = a.createdAt && typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate() : (a.createdAt instanceof Date ? a.createdAt : new Date(0));
+                    const dateB = b.createdAt && typeof b.createdAt.toDate === 'function' ? b.createdAt.toDate() : (b.createdAt instanceof Date ? b.createdAt : new Date(0));
+                    return dateB.getTime() - dateA.getTime();
+                });
+                renderNotes(notes);
+            }, (error) => {
+                console.error("Erro ao carregar notas:", error);
+                showToast("Erro ao carregar notas.", "error");
+                noteList.innerHTML = '<p class="text-red-500 col-span-full py-4">Erro ao carregar notas.</p>';
+                noNotesMessage.classList.add('hidden');
+            });
+        }
+
+        // Render notes in the sidebar list
+        function renderNotes(notes) {
+            noteList.innerHTML = '';
+            if (notes.length === 0) {
+                noNotesMessage.classList.remove('hidden');
+                return;
+            } else {
+                noNotesMessage.classList.add('hidden');
+            }
+
+            notes.forEach(note => {
+                const noteItem = document.createElement('div');
+                noteItem.className = `note-item ${currentNoteId === note.id ? 'active' : ''}`;
+                noteItem.dataset.id = note.id;
+                noteItem.innerHTML = `
+                    <span class="note-item-title">${note.title || 'Nova Nota'}</span>
+                    <div class="note-actions">
+                        <button class="delete-note-btn" data-id="${note.id}">
+                            <svg class="w-4 h-4 text-gray-500 hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 2 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+                `;
+                noteItem.addEventListener('click', (e) => {
+                    if (!e.target.closest('.delete-note-btn')) {
+                        selectNote(note.id, note.content || '', note.styles || {}, note.title || 'Nova Nota');
+                    }
+                });
+                noteList.appendChild(noteItem);
+            });
+
+            // Attach delete note listeners
+            noteList.querySelectorAll('.delete-note-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const noteId = e.currentTarget.dataset.id;
+                    showConfirmModal("Tem certeza que deseja excluir esta nota?", async () => {
+                        await deleteNote(noteId);
+                        hideModal(confirmModal); // Adicionado: Esconde o modal de confirmação após a ação
+                    });
+                });
+            });
+        }
+
+        // Select a note to edit
+        function selectNote(noteId, content, styles, title) {
+            currentNoteId = noteId;
+            noteTitleInput.value = title; // Set the title input
+            noteEditor.innerHTML = content; // Set innerHTML for contenteditable
+            applyStylesToEditor(styles); // Apply saved styles to editor (initial state)
+
+            document.querySelectorAll('.note-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            const selectedNoteItem = document.querySelector(`.note-item[data-id="${noteId}"]`);
+            if (selectedNoteItem) {
+                selectedNoteItem.classList.add('active');
+            }
+            noteEditor.focus(); // Focus editor for immediate typing
+        }
+
+        // Reset note editor
+        function resetNoteEditor() {
+            currentNoteId = null;
+            noteTitleInput.value = ''; // Clear title input
+            noteEditor.innerHTML = ''; // Clear contenteditable
+            // Reset default styles
+            noteEditor.style.cssText = '';
+            fontFamilySelect.value = 'Inter, sans-serif';
+            fontSizeSelect.value = '3'; // Default to 16px (size 3)
+            fontColorPicker.value = '#000000';
+            // Ensure contentEditable is active for new notes
+            document.execCommand('styleWithCSS', false, true);
+        }
+
+        // Add a new note
+        addNoteBtn.addEventListener('click', () => {
+            resetNoteEditor();
+            showToast("Comece a escrever sua nova nota!", "info");
+            noteEditor.focus(); // Focus editor for immediate typing
+        });
+
+        // Save/Update note
+        saveNoteBtn.addEventListener('click', async () => {
+            const title = noteTitleInput.value.trim() || 'Nova Nota'; // Use title input value
+            const content = noteEditor.innerHTML; // Get HTML content from contenteditable
+
+            const notesCollectionRef = getNotesCollectionRef();
+            if (!notesCollectionRef) return;
+
+            if (currentNoteId) {
+                try {
+                    await updateDoc(doc(notesCollectionRef, currentNoteId), {
+                        title: title,
+                        content: content,
+                        updatedAt: new Date()
+                    });
+                    showToast("Nota atualizada com sucesso!", "success");
+                } catch (e) {
+                    console.error("Erro ao atualizar nota:", e);
+                    showToast("Erro ao atualizar nota.", "error");
+                }
+            } else {
+                try {
+                    const newNoteRef = await addDoc(notesCollectionRef, {
+                        title: title,
+                        content: content,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                        profileId: currentProfileId
+                    });
+                    currentNoteId = newNoteRef.id;
+                    showToast("Nota salva com sucesso!", "success");
+                    loadNotes(currentProfileId); // Reload notes to show the new one and mark it active
+                } catch (e) {
+                    console.error("Erro ao salvar nota:", e);
+                    showToast("Erro ao salvar nota.", "error");
+                }
+            }
+        });
+
+        // Delete a note
+        async function deleteNote(noteId) {
+            const notesCollectionRef = getNotesCollectionRef();
+            if (!notesCollectionRef) return;
+            try {
+                await deleteDoc(doc(notesCollectionRef, noteId));
+                showToast("Nota excluída com sucesso!", "success");
+                if (currentNoteId === noteId) {
+                    resetNoteEditor();
+                }
+            } catch (e) {
+                console.error("Erro ao excluir nota:", e);
+                showToast("Erro ao excluir nota.", "error");
+            }
+        }
+
+        // --- Text Formatting Functions (for contenteditable div) ---
+        function applyFormatting(command, value = null) {
+            document.execCommand(command, false, value);
+            noteEditor.focus();
+        }
+
+        fontFamilySelect.addEventListener('change', (e) => applyFormatting('fontName', e.target.value));
+        fontSizeSelect.addEventListener('change', (e) => applyFormatting('fontSize', e.target.value));
+        fontColorPicker.addEventListener('input', (e) => applyFormatting('foreColor', e.target.value));
+
+        boldBtn.addEventListener('click', () => applyFormatting('bold'));
+        italicBtn.addEventListener('click', () => applyFormatting('italic'));
+        underlineBtn.addEventListener('click', () => applyFormatting('underline'));
+
+        function applyStylesToEditor(styles) {
+            // These are initial/default styles for the editor itself, not individual text selections
+            // For contenteditable, styles are mostly inline within the HTML.
+            // We can set default styles for the editor itself here if needed.
+            // For example, if a note didn't have specific styles saved, it would default to these.
+            noteEditor.style.fontFamily = styles.fontFamily || 'Inter, sans-serif';
+            noteEditor.style.fontSize = styles.fontSize || '16px'; // Note: execCommand uses 1-7
+            noteEditor.style.color = styles.color || '#000000';
+
+            // Update toolbar selects/pickers to reflect loaded styles (if applicable)
+            // This part is tricky because contenteditable doesn't expose a single 'current font'
+            // unless the entire content has the same style.
+            // For simplicity, we'll just set the dropdowns to the default or last applied.
+            fontFamilySelect.value = noteEditor.style.fontFamily;
+            fontSizeSelect.value = '3'; // Default to 16px (size 3) for the dropdown
+            fontColorPicker.value = '#000000'; // Default color
+        }
+
+        // Toggle toolbar visibility
+        toggleToolbarBtn.addEventListener('click', () => {
+            noteToolbarCollapsible.classList.toggle('expanded');
+            const isExpanded = noteToolbarCollapsible.classList.contains('expanded');
+            toggleToolbarBtn.querySelector('svg').style.transform = isExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+        });
+
+
+        // --- Event Listeners Setup (Tasks) ---
+
         addTaskBtn.addEventListener('click', () => {
             resetTaskForm();
             showModal(taskModal);
         });
 
-        // Show All Completed Tasks Button
         showAllCompletedBtn.addEventListener('click', () => {
             if (!currentProfileId) {
                 showToast("Selecione um perfil primeiro para ver as tarefas concluídas.", "info");
@@ -765,34 +1226,30 @@
             showModal(allCompletedModal);
         });
 
-        // Close All Completed Tasks Modal Button
         closeAllCompletedModalBtn.addEventListener('click', () => {
             hideModal(allCompletedModal);
         });
 
-        // Cancel Task Button (inside modal)
         cancelTaskBtn.addEventListener('click', () => {
             hideModal(taskModal);
         });
 
-        // Task Form Submission
         taskForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const title = taskTitleInput.value.trim();
+            const title = taskTitleInputElem.value.trim();
             const description = taskDescriptionInput.value.trim();
             const status = taskStatusSelect.value;
             const priority = taskPrioritySelect.value;
-            const expectedCompletionDate = expectedCompletionDateInput.value; // Get value from new date input
+            const expectedCompletionDate = expectedCompletionDateInput.value;
 
             if (!title) {
                 alert("O título da tarefa não pode estar vazio.");
                 return;
             }
 
-            const taskData = { title, description, status, priority, expectedCompletionDate }; // Include new date
+            const taskData = { title, description, status, priority, expectedCompletionDate };
 
-            // Handle dateCompleted for new tasks if status is 'concluido'
-            if (status === 'concluido') {
+            if (status === 'concluida') {
                 taskData.dateCompleted = getTodayDateString();
             } else {
                 taskData.dateCompleted = null;
@@ -813,20 +1270,16 @@
             resetTaskForm();
         });
 
-        // Function to attach event listeners to dynamically created task items (only for main list)
         function addTaskListEventListeners() {
-            // Status select dropdown
             taskList.querySelectorAll('.status-select').forEach(select => {
                 select.onchange = (e) => {
                     const taskId = e.target.dataset.id;
                     const newStatus = e.target.value;
-                    // Update the class dynamically
                     e.target.className = `status-select ${getStatusSelectClass(newStatus)}`;
                     updateTaskStatusFromSelect(taskId, newStatus);
                 };
             });
 
-            // Edit button
             taskList.querySelectorAll('.edit-task-btn').forEach(button => {
                 button.onclick = async (e) => {
                     const taskId = e.currentTarget.dataset.id;
@@ -837,11 +1290,11 @@
                         const taskDoc = await getDoc(doc(tasksCollectionRef, taskId));
                         if (taskDoc.exists()) {
                             const taskData = taskDoc.data();
-                            taskTitleInput.value = taskData.title;
+                            taskTitleInputElem.value = taskData.title;
                             taskDescriptionInput.value = taskData.description;
                             taskStatusSelect.value = taskData.status;
                             taskPrioritySelect.value = taskData.priority;
-                            expectedCompletionDateInput.value = taskData.expectedCompletionDate || ''; // Populate new date input
+                            expectedCompletionDateInput.value = taskData.expectedCompletionDate || '';
                             editingTaskId = taskId;
                             modalTitle.textContent = 'Editar Tarefa';
                             showModal(taskModal);
@@ -857,13 +1310,12 @@
                 };
             });
 
-            // Delete button
             taskList.querySelectorAll('.delete-task-btn').forEach(button => {
                 button.onclick = (e) => {
                     const taskId = e.currentTarget.dataset.id;
                     showConfirmModal("Tem certeza que deseja excluir esta tarefa?", async () => {
                         await deleteTask(taskId);
-                        hideModal(confirmModal);
+                        hideModal(confirmModal); // Hide confirm modal after action
                     });
                 };
             });
