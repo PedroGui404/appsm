@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Tarefas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        /* Profile Card Styling */
+        .profile-card {
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: 2px solid transparent;
+        }
+        .profile-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+        .profile-card.active {
+            border-color: #4f46e5; /* Indigo 600 */
+            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
+            transform: translateY(-2px);
+        }
+        .profile-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #6366f1; /* Indigo 500 */
+        }
+
+        /* Task Status Chips (for display purposes, not for select) */
+        .task-status-chip {
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: inline-block;
+        }
+        .status-em-andamento { background-color: #bfdbfe; color: #1e40af; }
+        .status-concluido { background-color: #d1fae5; color: #065f46; }
+        .status-passado { background-color: #fecaca; color: #991b1b; }
+
+        /* Priority Chips */
+        .priority-chip {
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: inline-block;
+        }
+        .priority-baixa { background-color: #dbeafe; color: #1e40af; }
+        .priority-media { background-color: #fef3c7; color: #92400e; }
+        .priority-alta { background-color: #fee2e2; color: #991b1b; }
+
+        /* New Date Chips */
+        .date-chip {
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: inline-block;
+        }
+        .expected-date-chip { background-color: #e0e7ff; color: #4338ca; } /* Indigo 100 / Indigo 700 */
+        .completed-date-chip { background-color: #d1fae5; color: #065f46; } /* Green 200 / Green 800 (similar to status-concluido but distinct) */
+
+
+        /* Modal specific styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 500px;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+            max-height: 90vh; /* Allow modal content to scroll if too tall */
+            overflow-y: auto; /* Enable scrolling for modal content */
+        }
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+        }
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        /* Task List Specific Styles */
+        #task-list-container, #all-completed-task-list-container {
+            max-height: 360px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background-color: #f9fafb;
+        }
+        .task-list-item {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid #e5e7eb;
+            background-color: #ffffff;
+            transition: opacity 0.3s ease; /* Smooth transition for opacity only */
+        }
+        .task-list-item:last-child {
+            border-bottom: none;
+        }
+        .task-list-item:hover {
+            background-color: #f3f4f6;
+        }
+        .task-list-item .task-info {
+            flex-grow: 1;
+            margin-right: 16px;
+        }
+        .task-list-item .task-actions {
+            display: flex;
+            gap: 8px; /* Changed to row layout */
+            align-items: center; /* Vertically align items */
+        }
+        .task-list-item .status-select {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+            min-width: 120px; /* Ensure enough width for text */
+            text-align: center;
+        }
+        /* Styles for the status select colors */
+        .status-select-em-andamento { background-color: #bfdbfe; color: #1e40af; }
+        .status-select-concluido { background-color: #d1fae5; color: #065f46; }
+        .status-select-passado { background-color: #fecaca; color: #991b1b; }
+        .status-select:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        /* Toast Notifications */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            background-color: #333;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transform: translateY(-20px);
+            animation: fadein 0.5s forwards, fadeout 0.5s 2.5s forwards; /* 3s total duration */
+        }
+        .toast.success { background-color: #22c55e; } /* Green */
+        .toast.error { background-color: #ef4444; }   /* Red */
+        .toast.info { background-color: #3b82f6; }    /* Blue */
+
+        @keyframes fadein {
+            from { opacity: 0; } /* Removed transform */
+            to { opacity: 1; }   /* Removed transform */
+        }
+        @keyframes fadeout {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); }
+        }
+
+        /* Animation for new task list items */
+        .task-item-enter {
+            opacity: 0; /* Removed transform */
+        }
+        .task-item-enter-active {
+            opacity: 1; /* Removed transform */
+            transition: opacity 0.5s ease-out; /* Only opacity transition */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="p-6 border-b border-gray-200">
+            <h1 class="text-3xl font-bold text-gray-800 mb-1">Gerenciador de Tarefas</h1>
+            <p class="text-gray-600">Organize suas tarefas por perfil.</p>
+        </div>
+
+        <div id="profile-selection" class="p-6 bg-gray-50 border-b border-gray-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            </div>
+
+        <div class="p-6 flex-grow">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold text-gray-800">Minhas Tarefas</h2>
+                <div class="flex gap-3 items-center">
+                    <button id="show-all-completed-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out">
+                        Ver Todas Concluídas
+                    </button>
+                    <button id="add-task-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        Adicionar Tarefa
+                    </button>
+                </div>
+            </div>
+            <div id="task-list-container" class="rounded-lg shadow-sm">
+                <div id="task-list" class="divide-y divide-gray-200">
+                    <p id="no-tasks-message" class="col-span-full text-center text-gray-500 py-4 hidden">Nenhuma tarefa para este perfil.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="task-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-xl font-semibold text-gray-800 mb-4">Adicionar Nova Tarefa</h3>
+            <form id="task-form" class="space-y-4">
+                <div>
+                    <label for="task-title" class="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                    <input type="text" id="task-title" class="form-input" placeholder="Título da tarefa" required>
+                </div>
+                <div>
+                    <label for="task-description" class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                    <textarea id="task-description" class="form-textarea" rows="3" placeholder="Detalhes da tarefa"></textarea>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="task-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="task-status" class="form-select">
+                            <option value="em-andamento">Em Andamento</option>
+                            <option value="concluido">Concluído</option>
+                            <option value="passado">Passado</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="task-priority" class="block text-sm font-medium text-gray-700 mb-1">Prioridade</label>
+                        <select id="task-priority" class="form-select">
+                            <option value="baixa">Baixa</option>
+                            <option value="media">Média</option>
+                            <option value="alta">Alta</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label for="expected-completion-date" class="block text-sm font-medium text-gray-700 mb-1">Data de Conclusão Esperada</label>
+                    <input type="date" id="expected-completion-date" class="form-input">
+                </div>
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" id="cancel-task-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition duration-200 ease-in-out">Cancelar</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out">Salvar Tarefa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Confirmar Ação</h3>
+            <p id="confirm-message" class="text-gray-700 mb-6">Tem certeza que deseja realizar esta ação?</p>
+            <div class="flex justify-end gap-3">
+                <button type="button" id="confirm-cancel-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition duration-200 ease-in-out">Cancelar</button>
+                <button type="button" id="confirm-action-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="all-completed-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Todas as Tarefas Concluídas</h3>
+            <div id="all-completed-task-list-container" class="rounded-lg shadow-sm">
+                <div id="all-completed-task-list" class="divide-y divide-gray-200">
+                    <p id="no-all-completed-tasks-message" class="col-span-full text-center text-gray-500 py-4 hidden">Nenhuma tarefa concluída para este perfil.</p>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 pt-4">
+                <button type="button" id="close-all-completed-modal-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition duration-200 ease-in-out">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Configuration (provided by the user)
+        const firebaseConfig = {
+            apiKey: "AIzaSyANa-2I5Fwq8h7Xd2YRMI8P8xStkNFMpy0",
+            authDomain: "teste-9dc03.firebaseapp.com",
+            projectId: "teste-9dc03",
+            storageBucket: "teste-9dc03.firebasestorage.app",
+            messagingSenderId: "718692523127",
+            appId: "1:718692523127:web:8bec2a6c3d807ea39c7a72"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Global variables for app ID
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // DOM Elements
+        const profileSelectionDiv = document.getElementById('profile-selection');
+        const addTaskBtn = document.getElementById('add-task-btn');
+        const showAllCompletedBtn = document.getElementById('show-all-completed-btn');
+        const taskModal = document.getElementById('task-modal');
+        const taskForm = document.getElementById('task-form');
+        const modalTitle = document.getElementById('modal-title');
+        const cancelTaskBtn = document.getElementById('cancel-task-btn');
+        const taskList = document.getElementById('task-list');
+        const noTasksMessage = document.getElementById('no-tasks-message');
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmMessage = document.getElementById('confirm-message');
+        const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+        const confirmActionBtn = document.getElementById('confirm-action-btn');
+
+        // New DOM Elements for All Completed Tasks Modal
+        const allCompletedModal = document.getElementById('all-completed-modal');
+        const allCompletedTaskList = document.getElementById('all-completed-task-list');
+        const noAllCompletedTasksMessage = document.getElementById('no-all-completed-tasks-message');
+        const closeAllCompletedModalBtn = document.getElementById('close-all-completed-modal-btn');
+        const toastContainer = document.getElementById('toast-container');
+
+        // Form Fields
+        const taskTitleInput = document.getElementById('task-title');
+        const taskDescriptionInput = document.getElementById('task-description');
+        const taskStatusSelect = document.getElementById('task-status');
+        const taskPrioritySelect = document.getElementById('task-priority');
+        const expectedCompletionDateInput = document.getElementById('expected-completion-date'); // New date input
+
+        // App State
+        let currentProfileId = null;
+        let editingTaskId = null;
+        let unsubscribeFromTasks = null;
+
+        // Pre-defined profiles data (hardcoded)
+        const profilesData = [
+            {
+                id: 'bianca',
+                name: 'Bianca',
+                role: 'Analista Sênior',
+                photo: 'bianca.png'
+            },
+            {
+                id: 'gizelle',
+                name: 'Gizelle',
+                role: 'Analista Júnior',
+                photo: 'gizelle.png'
+            },
+            {
+                id: 'pedro',
+                name: 'Pedro',
+                role: 'Estagiário',
+                photo: 'pedro.png'
+            }
+        ];
+
+        // --- Firebase Authentication and Initialization ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                console.log("Usuário autenticado:", user.uid);
+                renderProfiles();
+                // Removed default profile selection. User must click to select.
+            } else {
+                try {
+                    await signInAnonymously(auth);
+                } catch (error) {
+                    console.error("Erro ao autenticar no Firebase:", error);
+                    showToast("Erro ao autenticar no Firebase.", "error");
+                }
+            }
+        });
+
+        // --- Utility Functions ---
+
+        // Function to get the Firestore collection path for tasks
+        function getTasksCollectionRef() {
+            if (!currentProfileId) {
+                console.error("Nenhum perfil selecionado. Não é possível acessar o Firestore.");
+                return null;
+            }
+            return collection(db, `artifacts/${appId}/public/data/${currentProfileId}`);
+        }
+
+        // Get today's date in YYYY-MM-DD format
+        function getTodayDateString() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Check if a date string is today's date
+        function isToday(dateString) {
+            if (!dateString) return false;
+            return dateString === getTodayDateString();
+        }
+
+        // Show modal
+        function showModal(modalElement) {
+            modalElement.classList.add('show');
+        }
+
+        // Hide modal
+        function hideModal(modalElement) {
+            modalElement.classList.remove('show');
+        }
+
+        // Reset task form
+        function resetTaskForm() {
+            taskTitleInput.value = '';
+            taskDescriptionInput.value = '';
+            taskStatusSelect.value = 'em-andamento';
+            taskPrioritySelect.value = 'baixa';
+            expectedCompletionDateInput.value = ''; // Clear new date input
+            editingTaskId = null;
+            modalTitle.textContent = 'Adicionar Nova Tarefa';
+        }
+
+        // Display a toast notification
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+
+            // Remove toast after 3 seconds
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // --- Profile Management Functions ---
+
+        // Renders profile cards to the UI
+        function renderProfiles() {
+            profileSelectionDiv.innerHTML = '';
+            profilesData.forEach(profile => {
+                const profileCard = document.createElement('div');
+                profileCard.id = `profile-card-${profile.id}`;
+                profileCard.className = `profile-card bg-white p-4 rounded-lg shadow-md flex flex-col items-center text-center`;
+                profileCard.innerHTML = `
+                    <img class="profile-image mb-2" src="${profile.photo}" alt="Foto de ${profile.name}" onerror="this.onerror=null;this.src='https://placehold.co/80x80/cccccc/000000?text=?'">
+                    <h3 class="text-lg font-semibold text-gray-800">${profile.name}</h3>
+                    <p class="text-sm text-gray-600">${profile.role}</p>
+                `;
+                profileCard.addEventListener('click', () => selectProfile(profile.id));
+                profileSelectionDiv.appendChild(profileCard);
+            });
+        }
+
+        // Selects a profile and loads its tasks
+        function selectProfile(profileId) {
+            currentProfileId = profileId;
+
+            // Update active state for profile cards
+            document.querySelectorAll('.profile-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            const selectedProfileCard = document.getElementById(`profile-card-${profileId}`);
+            if (selectedProfileCard) {
+                selectedProfileCard.classList.add('active');
+            }
+
+            // Load tasks for the newly selected profile with default filtering
+            loadTasks(currentProfileId);
+        }
+
+        // --- Task Management Functions ---
+
+        // Add a new task
+        async function addTask(task) {
+            const tasksCollectionRef = getTasksCollectionRef();
+            if (!tasksCollectionRef) return;
+            try {
+                await addDoc(tasksCollectionRef, {
+                    ...task,
+                    profileId: currentProfileId,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+                showToast("Tarefa adicionada com sucesso!", "success");
+            } catch (e) {
+                console.error("Erro ao adicionar tarefa: ", e);
+                showToast("Erro ao adicionar tarefa.", "error");
+            }
+        }
+
+        // Update an existing task
+        async function updateTask(id, updates) {
+            const tasksCollectionRef = getTasksCollectionRef();
+            if (!tasksCollectionRef) return;
+            try {
+                const taskDocRef = doc(tasksCollectionRef, id);
+                await updateDoc(taskDocRef, {
+                    ...updates,
+                    updatedAt: new Date()
+                });
+                showToast("Tarefa atualizada com sucesso!", "success");
+            } catch (e) {
+                console.error("Erro ao atualizar tarefa: ", e);
+                showToast("Erro ao atualizar tarefa.", "error");
+            }
+        }
+
+        // Delete a task
+        async function deleteTask(id) {
+            const tasksCollectionRef = getTasksCollectionRef();
+            if (!tasksCollectionRef) return;
+            try {
+                const taskDocRef = doc(tasksCollectionRef, id);
+                await deleteDoc(taskDocRef);
+                showToast("Tarefa excluída com sucesso!", "success");
+            } catch (e) {
+                console.error("Erro ao excluir tarefa: ", e);
+                showToast("Erro ao excluir tarefa.", "error");
+            }
+        }
+
+        // Update task status from the select dropdown
+        async function updateTaskStatusFromSelect(taskId, newStatus) {
+            const updates = { status: newStatus };
+            if (newStatus === 'concluido') {
+                updates.dateCompleted = getTodayDateString(); // Set date when completed
+            } else {
+                updates.dateCompleted = null; // Clear date if status changes from completed
+            }
+            await updateTask(taskId, updates);
+        }
+
+        // Load tasks from Firestore for the current profile (main list - filtered)
+        async function loadTasks(profileId) {
+            // Unsubscribe from previous listener if exists
+            if (unsubscribeFromTasks) {
+                unsubscribeFromTasks();
+            }
+
+            const tasksCollectionRef = getTasksCollectionRef();
+            if (!tasksCollectionRef) {
+                console.error("Nenhum perfil selecionado. Não é possível obter a referência da coleção de tarefas.");
+                taskList.innerHTML = '';
+                noTasksMessage.classList.remove('hidden');
+                return;
+            }
+
+            // Query all tasks for the selected profile
+            const q = query(
+                tasksCollectionRef,
+                where("profileId", "==", profileId)
+            );
+
+            // Listen for real-time updates
+            unsubscribeFromTasks = onSnapshot(q, (snapshot) => {
+                let allTasks = [];
+                snapshot.forEach((doc) => {
+                    allTasks.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Sort tasks by createdAt in descending order (newest first) in JavaScript
+                allTasks.sort((a, b) => {
+                    // Ensure createdAt is a Date object (from Firestore Timestamp or existing Date)
+                    const dateA = a.createdAt && typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate() : (a.createdAt instanceof Date ? a.createdAt : new Date(0));
+                    const dateB = b.createdAt && typeof b.createdAt.toDate === 'function' ? b.createdAt.toDate() : (b.createdAt instanceof Date ? b.createdAt : new Date(0));
+                    return dateB.getTime() - dateA.getTime();
+                });
+
+                // Filter for main display: Show non-completed tasks OR completed tasks from today
+                let filteredTasks = allTasks.filter(task => {
+                    return task.status !== 'concluido' || (task.status === 'concluido' && isToday(task.dateCompleted));
+                });
+
+                renderTasks(filteredTasks, taskList, noTasksMessage, true); // Pass true for main list actions
+            }, (error) => {
+                console.error("Erro ao carregar tarefas:", error);
+                showToast("Erro ao carregar tarefas.", "error");
+                taskList.innerHTML = '<p class="text-red-500 col-span-full py-4">Erro ao carregar tarefas.</p>';
+                noTasksMessage.classList.add('hidden');
+            });
+        }
+
+        // Load ALL completed tasks for the modal
+        async function loadAllCompletedTasksForModal(profileId) {
+            const tasksCollectionRef = getTasksCollectionRef();
+            if (!tasksCollectionRef) return;
+
+            // Query only completed tasks for the selected profile
+            const q = query(
+                tasksCollectionRef,
+                where("profileId", "==", profileId),
+                where("status", "==", "concluido")
+            );
+            try {
+                const querySnapshot = await getDocs(q); // One-time fetch
+                const completedTasks = [];
+                querySnapshot.forEach((doc) => {
+                    completedTasks.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Sort completed tasks by dateCompleted in descending order (newest first) in JavaScript
+                completedTasks.sort((a, b) => {
+                    const dateA = a.dateCompleted ? new Date(a.dateCompleted) : new Date(0);
+                    const dateB = b.dateCompleted ? new Date(b.dateCompleted) : new Date(0);
+                    return dateB.getTime() - dateA.getTime();
+                });
+
+                renderTasks(completedTasks, allCompletedTaskList, noAllCompletedTasksMessage, false); // Pass false for no actions in modal
+            } catch (error) {
+                console.error("Erro ao carregar todas as tarefas concluídas:", error);
+                showToast("Erro ao carregar todas as tarefas concluídas.", "error");
+                allCompletedTaskList.innerHTML = '<p class="text-red-500 col-span-full py-4">Erro ao carregar tarefas concluídas.</p>';
+                noAllCompletedTasksMessage.classList.add('hidden');
+            }
+        }
+
+        // Render tasks to a given list element
+        function renderTasks(tasks, targetListElement, targetNoTasksMessageElement, includeActions) {
+            targetListElement.innerHTML = ''; // Clear existing tasks
+
+            if (tasks.length === 0) {
+                targetNoTasksMessageElement.classList.remove('hidden');
+                return;
+            } else {
+                targetNoTasksMessageElement.classList.add('hidden');
+            }
+
+            tasks.forEach(task => {
+                const taskListItem = document.createElement('div');
+                taskListItem.className = `task-list-item task-item-enter`; // Add initial animation class
+                taskListItem.innerHTML = `
+                    <div class="task-info">
+                        <h3 class="text-lg font-medium text-gray-800">${task.title}</h3>
+                        <p class="text-gray-600 text-sm">${task.description || 'Sem descrição'}</p>
+                        <div class="flex items-center flex-wrap gap-2 mt-2">
+                            <span class="priority-chip priority-${task.priority}" data-priority="${task.priority}">${getDisplayPriority(task.priority)}</span>
+                            ${task.expectedCompletionDate ? `<span class="date-chip expected-date-chip">Concluir até: ${formatDateDisplay(task.expectedCompletionDate)}</span>` : ''}
+                            ${task.status === 'concluido' && task.dateCompleted ? `<span class="date-chip completed-date-chip">Concluído em: ${formatDateDisplay(task.dateCompleted)}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="task-actions">
+                        ${includeActions ? `
+                            <select data-id="${task.id}" class="status-select ${getStatusSelectClass(task.status)}">
+                                <option value="em-andamento" ${task.status === 'em-andamento' ? 'selected' : ''}>Em Andamento</option>
+                                <option value="concluido" ${task.status === 'concluido' ? 'selected' : ''}>Concluido</option>
+                                <option value="passado" ${task.status === 'passado' ? 'selected' : ''}>Passado</option>
+                            </select>
+                            <button data-id="${task.id}" data-action="edit" class="edit-task-btn p-2 rounded-full text-indigo-600 hover:bg-indigo-100 transition duration-200">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                            </button>
+                            <button data-id="${task.id}" data-action="delete" class="delete-task-btn p-2 rounded-full text-red-600 hover:bg-red-100 transition duration-200">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 2 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                targetListElement.appendChild(taskListItem);
+
+                // Trigger the animation
+                setTimeout(() => {
+                    taskListItem.classList.add('task-item-enter-active');
+                }, 10); // Small delay to ensure CSS transition is applied
+            });
+
+            // Add event listeners only if actions are included (for the main list)
+            if (includeActions) {
+                addTaskListEventListeners();
+            }
+        }
+
+        // Helper to format date for display (e.g., YYYY-MM-DD to DD/MM/YYYY)
+        function formatDateDisplay(dateString) {
+            if (!dateString) return '';
+            const [year, month, day] = dateString.split('-');
+            return `${day}/${month}/${year}`;
+        }
+
+        // Helper to get status select class for styling
+        function getStatusSelectClass(status) {
+            switch (status) {
+                case 'em-andamento': return 'status-select-em-andamento';
+                case 'concluido': return 'status-select-concluido';
+                case 'passado': return 'status-select-passado';
+                default: return '';
+            }
+        }
+
+        // Helper to get display priority text
+        function getDisplayPriority(priority) {
+            switch (priority) {
+                case 'baixa': return 'Prioridade Baixa';
+                case 'media': return 'Prioridade Média';
+                case 'alta': return 'Prioridade Alta';
+                default: return priority;
+            }
+        }
+
+
+        // --- Event Listeners Setup ---
+
+        // Add Task Button
+        addTaskBtn.addEventListener('click', () => {
+            resetTaskForm();
+            showModal(taskModal);
+        });
+
+        // Show All Completed Tasks Button
+        showAllCompletedBtn.addEventListener('click', () => {
+            if (!currentProfileId) {
+                showToast("Selecione um perfil primeiro para ver as tarefas concluídas.", "info");
+                return;
+            }
+            loadAllCompletedTasksForModal(currentProfileId);
+            showModal(allCompletedModal);
+        });
+
+        // Close All Completed Tasks Modal Button
+        closeAllCompletedModalBtn.addEventListener('click', () => {
+            hideModal(allCompletedModal);
+        });
+
+        // Cancel Task Button (inside modal)
+        cancelTaskBtn.addEventListener('click', () => {
+            hideModal(taskModal);
+        });
+
+        // Task Form Submission
+        taskForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = taskTitleInput.value.trim();
+            const description = taskDescriptionInput.value.trim();
+            const status = taskStatusSelect.value;
+            const priority = taskPrioritySelect.value;
+            const expectedCompletionDate = expectedCompletionDateInput.value; // Get value from new date input
+
+            if (!title) {
+                alert("O título da tarefa não pode estar vazio.");
+                return;
+            }
+
+            const taskData = { title, description, status, priority, expectedCompletionDate }; // Include new date
+
+            // Handle dateCompleted for new tasks if status is 'concluido'
+            if (status === 'concluido') {
+                taskData.dateCompleted = getTodayDateString();
+            } else {
+                taskData.dateCompleted = null;
+            }
+
+            if (editingTaskId) {
+                await updateTask(editingTaskId, taskData);
+            } else {
+                if (!currentProfileId) {
+                    showToast("Selecione um perfil para adicionar a tarefa.", "error");
+                    hideModal(taskModal);
+                    return;
+                }
+                await addTask(taskData);
+            }
+
+            hideModal(taskModal);
+            resetTaskForm();
+        });
+
+        // Function to attach event listeners to dynamically created task items (only for main list)
+        function addTaskListEventListeners() {
+            // Status select dropdown
+            taskList.querySelectorAll('.status-select').forEach(select => {
+                select.onchange = (e) => {
+                    const taskId = e.target.dataset.id;
+                    const newStatus = e.target.value;
+                    // Update the class dynamically
+                    e.target.className = `status-select ${getStatusSelectClass(newStatus)}`;
+                    updateTaskStatusFromSelect(taskId, newStatus);
+                };
+            });
+
+            // Edit button
+            taskList.querySelectorAll('.edit-task-btn').forEach(button => {
+                button.onclick = async (e) => {
+                    const taskId = e.currentTarget.dataset.id;
+                    const tasksCollectionRef = getTasksCollectionRef();
+                    if (!tasksCollectionRef) return;
+
+                    try {
+                        const taskDoc = await getDoc(doc(tasksCollectionRef, taskId));
+                        if (taskDoc.exists()) {
+                            const taskData = taskDoc.data();
+                            taskTitleInput.value = taskData.title;
+                            taskDescriptionInput.value = taskData.description;
+                            taskStatusSelect.value = taskData.status;
+                            taskPrioritySelect.value = taskData.priority;
+                            expectedCompletionDateInput.value = taskData.expectedCompletionDate || ''; // Populate new date input
+                            editingTaskId = taskId;
+                            modalTitle.textContent = 'Editar Tarefa';
+                            showModal(taskModal);
+                        } else {
+                            console.error("Tarefa não encontrada para edição.");
+                            showToast("Tarefa não encontrada para edição.", "error");
+                        }
+                    }
+                    catch (error) {
+                        console.error("Erro ao buscar tarefa para edição:", error);
+                        showToast("Erro ao buscar tarefa para edição.", "error");
+                    }
+                };
+            });
+
+            // Delete button
+            taskList.querySelectorAll('.delete-task-btn').forEach(button => {
+                button.onclick = (e) => {
+                    const taskId = e.currentTarget.dataset.id;
+                    showConfirmModal("Tem certeza que deseja excluir esta tarefa?", async () => {
+                        await deleteTask(taskId);
+                        hideModal(confirmModal);
+                    });
+                };
+            });
+        }
+
+        // --- Confirmation Modal Logic ---
+        let confirmActionCallback = null;
+
+        function showConfirmModal(message, callback) {
+            confirmMessage.textContent = message;
+            confirmActionCallback = callback;
+            showModal(confirmModal);
+        }
+
+        confirmCancelBtn.addEventListener('click', () => {
+            hideModal(confirmModal);
+            confirmActionCallback = null;
+        });
+
+        confirmActionBtn.addEventListener('click', () => {
+            if (confirmActionCallback) {
+                confirmActionCallback();
+            }
+        });
+
+        // Close modals if clicked outside
+        taskModal.addEventListener('click', (e) => {
+            if (e.target === taskModal) {
+                hideModal(taskModal);
+            }
+        });
+
+        confirmModal.addEventListener('click', (e) => {
+            if (e.target === confirmModal) {
+                hideModal(confirmModal);
+            }
+        });
+
+        allCompletedModal.addEventListener('click', (e) => {
+            if (e.target === allCompletedModal) {
+                hideModal(allCompletedModal);
+            }
+        });
+    </script>
+</body>
+</html>
