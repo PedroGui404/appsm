@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minhas Atualizações de Projeto</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome para ícones (para o botão de menu principal) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos personalizados para a barra lateral e transições */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Sidebar desliza da direita */
+        .sidebar {
+            width: 280px; /* Largura padrão para desktop */
+            transform: translateX(100%); /* Escondido por padrão */
+            transition: transform 0.3s ease-in-out;
+        }
+        .sidebar.open {
+            transform: translateX(0); /* Aberto */
+        }
+        .main-content {
+            transition: margin-left 0.3s ease-in-out;
+        }
+        /* Estilos para o overlay */
+        .overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 10; /* Abaixo da sidebar, mas acima do conteúdo */
+        }
+        /* Estilos para o modal */
+        .modal {
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 999; /* Acima de tudo */
+        }
+        .modal-content {
+            max-height: 90vh; /* Limita a altura do conteúdo do modal */
+            overflow-y: auto; /* Adiciona scroll se o conteúdo for muito grande */
+        }
+        /* Estilos para o scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Animação para o card ao ser clicado no menu */
+        @keyframes highlight-card {
+            0% { transform: scale(1); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+            50% { transform: scale(1.02); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 4px rgba(59, 130, 246, 0.5); }
+            100% { transform: scale(1); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        }
+        .highlight {
+            animation: highlight-card 1.5s ease-out;
+        }
+
+        /* Estilo para o spinner de carregamento */
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 flex h-screen overflow-hidden">
+
+    <!-- Overlay para fechar a barra lateral -->
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-10 hidden overlay"></div>
+
+    <!-- Barra Lateral (Sidebar) -->
+    <aside id="sidebar" class="sidebar bg-white shadow-xl p-6 flex flex-col fixed h-full z-20 top-0 right-0">
+        <div class="p-4 border-b flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-blue-700">Atualizações</h2>
+            <button id="close-sidebar-btn" class="text-gray-600 hover:text-gray-900 transition duration-200">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        <ul id="menu-atualizacoes" class="flex-1 space-y-3 overflow-y-auto pr-2">
+            <!-- Títulos das atualizações predefinidas serão inseridos aqui pelo JS -->
+        </ul>
+        <button id="manage-menu-btn" class="mt-8 w-full bg-purple-600 text-white py-3 rounded-xl hover:bg-purple-700 transition duration-300 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75">
+            <i class="fas fa-cog mr-2"></i> Gerenciar Itens do Menu
+        </button>
+    </aside>
+
+    <!-- Conteúdo Principal -->
+    <main id="main-content" class="flex-1 p-8 overflow-y-auto main-content">
+        <header class="flex justify-end items-center mb-10 pb-4 border-b border-gray-200">
+            <h1 class="text-5xl font-extrabold text-gray-900 flex-grow text-center md:text-left hidden">Dashboard de Atualizações</h1>
+            <div class="flex space-x-4">
+                <button id="view-history-btn" class="bg-gray-600 text-white py-3 px-6 rounded-xl hover:bg-gray-700 transition duration-300 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75">
+                    <i class="fas fa-history mr-2"></i> Ver Histórico
+                </button>
+                <button id="add-update-btn" class="bg-blue-600 text-white py-3 px-6 rounded-xl hover:bg-blue-700 transition duration-300 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
+                    <i class="fas fa-plus-circle mr-2"></i> Adicionar Atualização
+                </button>
+            </div>
+        </header>
+
+        <!-- Tela de carregamento inicial -->
+        <div id="initial-loading" class="flex flex-col items-center justify-center py-20 min-h-[calc(100vh-150px)]">
+            <svg class="animate-spin h-16 w-16 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="mt-6 text-xl text-gray-600">Carregando atualizações...</span>
+        </div>
+
+        <!-- Container dos cards (inicialmente oculto) -->
+        <section id="updates-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 hidden">
+            <!-- Cards de atualização serão inseridos aqui pelo JS -->
+        </section>
+    </main>
+
+    <!-- Modal para Comentários (Escrita/Leitura) -->
+    <div id="comment-modal-overlay" class="hidden fixed inset-0 flex items-center justify-center modal">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md transform transition-all scale-95 opacity-0 modal-content">
+            <h3 class="text-2xl font-bold mb-4 text-gray-800 text-center">Adicionar Comentário</h3>
+            <textarea id="comment-modal-textarea" rows="6" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-200 resize-y" placeholder="Descreva o problema ou observação..."></textarea>
+            <div class="flex justify-end gap-3 mt-5">
+                <button id="close-comment-modal-btn" class="bg-gray-300 text-gray-800 py-2.5 px-5 rounded-xl hover:bg-gray-400 transition duration-300 shadow-md">Fechar</button>
+                <button id="salvar-comment-btn" class="bg-blue-600 text-white py-2.5 px-5 rounded-xl hover:bg-blue-700 transition duration-300 shadow-md">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOVO MODAL: Gerenciamento de Itens do Menu -->
+    <div id="menu-management-modal" class="hidden fixed inset-0 flex items-center justify-center modal">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all scale-95 opacity-0 modal-content">
+            <h3 id="menu-modal-title" class="text-2xl font-bold mb-6 text-gray-800 text-center">Gerenciar Itens do Menu</h3>
+
+            <!-- Formulário para Adicionar/Editar Item do Menu -->
+            <form id="menu-item-form" class="space-y-4 mb-8 p-6 border border-gray-200 rounded-lg bg-gray-50">
+                <h4 id="menu-form-subtitle" class="text-xl font-semibold text-gray-700 mb-4">Adicionar Novo Item</h4>
+                <div>
+                    <label for="menu-item-title" class="block text-gray-700 text-sm font-semibold mb-2">Título:</label>
+                    <input type="text" id="menu-item-title" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Ex: Nova Extração de Dados" required>
+                </div>
+                <div>
+                    <label for="menu-item-description" class="block text-gray-700 text-sm font-semibold mb-2">Descrição:</label>
+                    <textarea id="menu-item-description" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 resize-y" placeholder="Descreva o que este item do menu representa..." required></textarea>
+                </div>
+                <input type="hidden" id="editing-menu-item-id">
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="cancel-menu-item-btn" class="bg-gray-300 text-gray-800 py-2.5 px-5 rounded-xl hover:bg-gray-400 transition duration-300 shadow-md">Cancelar</button>
+                    <button type="submit" class="bg-green-600 text-white py-2.5 px-5 rounded-xl hover:bg-green-700 transition duration-300 shadow-md">Salvar Item</button>
+                </div>
+            </form>
+
+            <!-- Lista de Itens do Menu Existentes -->
+            <h4 class="text-xl font-semibold text-gray-700 mb-4">Itens Existentes</h4>
+            <div id="menu-items-list" class="space-y-3 max-h-64 overflow-y-auto pr-2">
+                <!-- Itens do menu serão carregados aqui -->
+            </div>
+
+            <div class="flex justify-end mt-8">
+                <button id="close-menu-management-modal-btn" class="bg-gray-500 text-white py-2.5 px-5 rounded-xl hover:bg-gray-600 transition duration-300 shadow-md">Fechar Gerenciador</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOVO MODAL: Histórico de Atualizações em Tabela -->
+    <div id="history-modal" class="hidden fixed inset-0 flex items-center justify-center modal">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-5xl transform transition-all scale-95 opacity-0 modal-content">
+            <h3 class="text-2xl font-bold mb-6 text-gray-800 text-center">Histórico de Atualizações</h3>
+            <div class="flex justify-end mb-4">
+                <button id="export-excel-btn" class="bg-green-600 text-white py-2.5 px-5 rounded-xl hover:bg-green-700 transition duration-300 shadow-md">
+                    <i class="fas fa-file-excel mr-2"></i> Exportar para Excel
+                </button>
+            </div>
+            <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hora</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assunto</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comentário</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Linhas da tabela serão inseridas aqui -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-end mt-8">
+                <button id="close-history-modal-btn" class="bg-gray-500 text-white py-2.5 px-5 rounded-xl hover:bg-gray-600 transition duration-300 shadow-md">Fechar Histórico</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal de Confirmação (para remoção) -->
+    <div id="confirm-modal" class="hidden fixed inset-0 flex items-center justify-center modal">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm text-center transform transition-all scale-95 opacity-0">
+            <h3 class="text-2xl font-bold mb-4 text-gray-800">Confirmar Remoção</h3>
+            <p class="text-gray-600 mb-6">Tem certeza que deseja remover esta atualização?</p>
+            <div class="flex justify-center space-x-4">
+                <button id="confirm-cancel-btn" class="bg-gray-300 text-gray-800 py-2.5 px-5 rounded-xl hover:bg-gray-400 transition duration-300">Cancelar</button>
+                <button id="confirm-delete-btn" class="bg-red-600 text-white py-2.5 px-5 rounded-xl hover:bg-red-700 transition duration-300">Remover</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Não importamos getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged
+        // pois não usaremos autenticação.
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            const addUpdateBtn = document.getElementById('add-update-btn');
+            const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+            const menuAtualizacoes = document.getElementById('menu-atualizacoes');
+            const updatesContainer = document.getElementById('updates-container');
+            const initialLoading = document.getElementById('initial-loading');
+            const contentContainer = document.getElementById('updates-container');
+
+            const commentModalOverlay = document.getElementById('comment-modal-overlay');
+            const commentModalContent = commentModalOverlay.querySelector('.modal-content');
+            const commentModalTextarea = document.getElementById('comment-modal-textarea');
+            const salvarCommentBtn = document.getElementById('salvar-comment-btn');
+            const closeCommentModalBtn = document.getElementById('close-comment-modal-btn');
+
+            const confirmModal = document.getElementById('confirm-modal');
+            const confirmModalContent = confirmModal.querySelector('div');
+            const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+            const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+
+            // NOVOS ELEMENTOS PARA GERENCIAMENTO DO MENU
+            const manageMenuBtn = document.getElementById('manage-menu-btn');
+            const menuManagementModal = document.getElementById('menu-management-modal');
+            const menuManagementModalContent = menuManagementModal.querySelector('.modal-content');
+            const closeMenuManagementModalBtn = document.getElementById('close-menu-management-modal-btn');
+            const menuItemForm = document.getElementById('menu-item-form');
+            const menuItemTitleInput = document.getElementById('menu-item-title');
+            const menuItemDescriptionInput = document.getElementById('menu-item-description');
+            const editingMenuItemIdInput = document.getElementById('editing-menu-item-id');
+            const cancelMenuItemBtn = document.getElementById('cancel-menu-item-btn');
+            const menuFormSubtitle = document.getElementById('menu-form-subtitle');
+            const menuItemsList = document.getElementById('menu-items-list');
+
+            // NOVOS ELEMENTOS PARA HISTÓRICO
+            const viewHistoryBtn = document.getElementById('view-history-btn');
+            const historyModal = document.getElementById('history-modal');
+            const historyModalContent = historyModal.querySelector('.modal-content');
+            const closeHistoryModalBtn = document.getElementById('close-history-modal-btn');
+            const historyTableBody = document.getElementById('history-table-body');
+            const exportExcelBtn = document.getElementById('export-excel-btn');
+
+
+            let registros = []; // Registros diários de atualizações
+            let menuItems = []; // Itens de definição do menu
+            let historicalUpdates = []; // Todos os registros para o histórico
+            let comentarioAtualId = null;
+            let updateIdToDelete = null; // Para exclusão de registros diários
+            let menuItemIdToDelete = null; // Para exclusão de itens do menu
+            let isCommentModalReadOnly = false;
+            let editingMenuItem = null; // Para controlar se estamos editando um item do menu
+
+            // Firebase Initialization
+            const firebaseConfig = {
+                apiKey: "AIzaSyBQBfQG-fzyVKbU3jD9nx7HAnr535NyH08",
+                authDomain: "teste-70732.firebaseapp.com",
+                projectId: "teste-70732",
+                storageBucket: "teste-70732.firebasestorage.app",
+                messagingSenderId: "1045030413958",
+                appId: "1:1045030413958:web:ef9642bdbe381d16ec5307",
+                measurementId: "G-V3RC63T4X7"
+            };
+
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+            // A aplicação começa a carregar os itens do menu e depois as atualizações.
+            // Isso garante que menuItems esteja preenchido antes de renderizar os registros.
+            await carregarMenu(); // Carrega os itens do menu do Firestore primeiro
+            await carregarAtualizacoes(); // Carrega as atualizações diárias depois
+
+            // --- Funções Auxiliares ---
+
+            /**
+             * Formata uma string de hora para o formato HH:MM.
+             * @param {string} hora - A string da hora.
+             * @returns {string} A hora formatada.
+             */
+            function formatarHora(hora) {
+                if (!hora) return "";
+                if (/^\d{2}:\d{2}$/.test(hora)) return hora;
+                const date = new Date(hora);
+                return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            }
+
+            /**
+             * Formata uma string de data para o formato DD/MM/YYYY.
+             * @param {string} dateString - A string da data (YYYY-MM-DD).
+             * @returns {string} A data formatada.
+             */
+            function formatarData(dateString) {
+                if (!dateString) return "";
+                const [year, month, day] = dateString.split('-');
+                return `${day}/${month}/${year}`;
+            }
+
+            /**
+             * Obtém a descrição de uma atualização predefinida.
+             * Agora, a descrição virá do objeto do item do menu.
+             * @param {string} assunto - O título da atualização.
+             * @returns {string} A descrição correspondente ou uma mensagem padrão.
+             */
+            function obterDescricao(assunto) {
+                // Esta função não é mais estritamente necessária para o card,
+                // pois a descrição já está no objeto 'item' do registro.
+                // No entanto, pode ser útil se a descrição for usada em outro lugar
+                // e precisar ser procurada pelo título.
+                const menuItem = menuItems.find(item => item.titulo === assunto);
+                return menuItem ? menuItem.descricao : "Descrição não disponível";
+            }
+
+            // --- Manipulação do Menu Lateral (Sidebar) ---
+
+            /**
+             * Abre o menu lateral.
+             */
+            function abrirMenu() {
+                sidebar.classList.add('open');
+                overlay.classList.remove('hidden');
+            }
+
+            /**
+             * Fecha o menu lateral.
+             */
+            function fecharMenu() {
+                sidebar.classList.remove('open');
+                overlay.classList.add('hidden');
+            }
+
+            // --- Manipulação do Carregamento Inicial ---
+
+            /**
+             * Mostra o conteúdo principal e esconde a tela de carregamento.
+             */
+            function mostrarConteudo() {
+                initialLoading.classList.add('hidden');
+                contentContainer.classList.remove('hidden');
+            }
+
+            // --- Renderização da UI ---
+
+            /**
+             * Renderiza os cards de atualização na área principal.
+             */
+            function renderizarRegistros() {
+                updatesContainer.innerHTML = '';
+                if (registros.length === 0) {
+                    updatesContainer.innerHTML = `
+                        <div class="col-span-full text-center text-gray-500 p-10 bg-white rounded-xl shadow-lg border border-gray-100">
+                            <p class="text-2xl font-semibold mb-4">Nenhuma atualização cadastrada para hoje.</p>
+                            <p class="text-lg">Clique em "Adicionar Atualização" para começar!</p>
+                            <i class="fas fa-box-open text-6xl text-gray-300 mt-6"></i>
+                        </div>
+                    `;
+                    return;
+                }
+
+                registros.forEach(item => {
+                    // A descrição agora é puxada diretamente do item do registro
+                    const descricaoDoCard = item.descricao;
+                    const isErro = item.error === "true" || item.error === true;
+                    const horaFormatada = formatarHora(item.hora);
+
+                    const card = document.createElement("div");
+                    card.className = "bg-white p-7 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col border border-gray-100 relative";
+                    card.dataset.id = item.id;
+
+                    // Ícone de status (V/X)
+                    const statusIconHtml = isErro
+                        ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="red" class="size-6">
+                            <path fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14Zm2.78-4.22a.75.75 0 0 1-1.06 0L8 9.06l-1.72 1.72a.75.75 0 1 1-1.06-1.06L6.94 8 5.22 6.28a.75.75 0 0 1 1.06-1.06L8 6.94l1.72-1.72a.75.75 0 1 1 1.06 1.06L9.06 8l1.72 1.72a.75.75 0 0 1 0 1.06Z" clip-rule="evenodd" />
+                           </svg>`
+                        : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="green" class="size-6">
+                            <path fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14Zm3.844-8.791a.75.75 0 0 0-1.188-.918l-3.7 4.79-1.649-1.833a.75.75 0 1 0-1.114 1.004l2.25 2.5a.75.75 0 0 0 1.15-.043l4.25-5.5Z" clip-rule="evenodd" />
+                           </svg>`;
+
+                    card.innerHTML = `
+                        <div class="flex-grow">
+                            <h3 class="text-2xl font-bold mb-3 text-gray-900">${item.assunto}</h3>
+                            <p class="text-gray-700 mb-4 text-base leading-relaxed">${descricaoDoCard}</p>
+                            ${horaFormatada ? `<p class="text-sm text-gray-500 mb-4 border-t pt-3 mt-3"><strong>Hora:</strong> ${horaFormatada}</p>` : ''}
+                        </div>
+                        <div class="flex items-center justify-between mt-4 border-t pt-4 border-gray-200">
+                            <div class="flex space-x-4">
+                                <button class="status-toggle-btn text-gray-500 hover:text-gray-700 transition duration-200" data-id="${item.id}" title="Alternar status">
+                                    ${statusIconHtml}
+                                </button>
+                                ${isErro && item.comment ? `
+                                <button class="view-comment-btn text-blue-600 hover:text-blue-800 transition duration-200 flex items-center text-sm font-medium" data-id="${item.id}" title="Ver Comentário">
+                                    <i class="fas fa-eye mr-1"></i> Comentário
+                                </button>` : ''}
+                                <button class="delete-btn text-red-600 hover:text-red-800 transition duration-300 flex items-center text-sm font-medium" data-id="${item.id}" title="Remover">
+                                    <i class="fas fa-trash-alt mr-1"></i> Remover
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    updatesContainer.appendChild(card);
+                });
+
+                addCardEventListeners();
+            }
+
+            /**
+             * Adiciona os event listeners aos botões dentro dos cards.
+             */
+            function addCardEventListeners() {
+                document.querySelectorAll('.status-toggle-btn').forEach(button => {
+                    button.addEventListener('click', async (e) => {
+                        const id = e.currentTarget.dataset.id; // Firestore ID is a string
+                        const registro = registros.find(r => r.id === id);
+                        if (registro) {
+                            await alternarErro(id, registro.error);
+                        }
+                    });
+                });
+
+                document.querySelectorAll('.view-comment-btn').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const id = e.currentTarget.dataset.id; // Firestore ID is a string
+                        const registro = registros.find(r => r.id === id);
+                        if (registro && registro.comment) {
+                            abrirComentarioModalLeitura(registro.comment);
+                        }
+                    });
+                });
+
+                document.querySelectorAll('.delete-btn').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const id = e.currentTarget.dataset.id; // Firestore ID is a string
+                        openConfirmModal(id, 'daily'); // Passa o tipo para o modal de confirmação
+                    });
+                });
+            }
+
+            /**
+             * Rola para o card da atualização e o destaca.
+             * @param {string} id - O ID da atualização.
+             */
+            function displayUpdateDetails(id) {
+                const card = document.querySelector(`div[data-id="${id}"]`);
+                if (card) {
+                    document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.classList.add('highlight');
+                }
+            }
+
+            // --- Manipulação de Dados (CRUD) com Firestore ---
+
+            /**
+             * Cria uma nova atualização diária no Firestore.
+             * @param {string} assunto - O título da atualização.
+             * @param {string} descricao - A descrição da atualização.
+             */
+            async function criarAtualizacao(assunto, descricao) {
+                const newRecord = {
+                    assunto,
+                    descricao, // Agora a descrição é passada
+                    comment: "",
+                    error: "false",
+                    data: new Date().toISOString().split('T')[0], //YYYY-MM-DD
+                    hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), // HH:MM
+                };
+
+                const tempId = `temp-${Date.now()}`;
+                registros.push({ ...newRecord, id: tempId, status: "loading" });
+                renderizarRegistros();
+                showTemporaryMessage(`Adicionando "${assunto}"...`, 'blue');
+
+                try {
+                    const docRef = await addDoc(collection(db, `artifacts/${appId}/atualizacoes_publicas`), newRecord);
+                    console.log("Documento escrito com ID: ", docRef.id);
+
+                    registros = registros.filter(r => r.id !== tempId);
+                    registros.push({ ...newRecord, id: docRef.id, status: "success" });
+                    renderizarRegistros();
+                    showTemporaryMessage(`Atualização "${assunto}" adicionada com sucesso!`, 'green');
+
+                    setTimeout(() => {
+                        const finalRecord = registros.find(r => r.id === docRef.id);
+                        if (finalRecord) delete finalRecord.status;
+                        renderizarRegistros();
+                    }, 1000);
+
+                } catch (e) {
+                    console.error("Erro ao adicionar documento: ", e);
+                    registros = registros.filter(r => r.id !== tempId);
+                    renderizarRegistros();
+                    showTemporaryMessage('Erro ao adicionar atualização.', 'red');
+                }
+            }
+
+            /**
+             * Remove uma atualização diária do Firestore.
+             * @param {string} id - O ID do documento no Firestore a ser removido.
+             */
+            async function deletar(id) {
+                const registro = registros.find(r => r.id === id);
+                if (registro) {
+                    registro.status = "loading";
+                    renderizarRegistros();
+                    showTemporaryMessage('Removendo atualização...', 'blue');
+
+                    try {
+                        await deleteDoc(doc(db, `artifacts/${appId}/atualizacoes_publicas`, id));
+                        console.log("Documento removido com ID: ", id);
+                        registros = registros.filter(r => r.id !== id);
+                        renderizarRegistros();
+                        showTemporaryMessage('Atualização removida com sucesso!', 'green');
+                    } catch (e) {
+                        console.error("Erro ao remover documento: ", e);
+                        registro.status = undefined;
+                        renderizarRegistros();
+                        showTemporaryMessage('Erro ao remover atualização.', 'red');
+                    }
+                }
+            }
+
+            /**
+             * Alterna o status de erro de uma atualização diária no Firestore e gerencia o modal de comentário.
+             * @param {string} id - O ID do documento no Firestore.
+             * @param {string} valorAtual - O valor atual do status de erro ("true" ou "false").
+             */
+            async function alternarErro(id, valorAtual) {
+                const novoValor = valorAtual === "true" ? "false" : "true";
+                const registro = registros.find(r => r.id === id);
+
+                if (registro) {
+                    const oldComment = registro.comment;
+                    registro.error = novoValor;
+                    registro.status = "loading";
+                    if (novoValor === "false") {
+                        registro.comment = "";
+                    }
+                    renderizarRegistros();
+                    showTemporaryMessage('Alterando status...', 'blue');
+
+                    try {
+                        await updateDoc(doc(db, `artifacts/${appId}/atualizacoes_publicas`, id), {
+                            error: novoValor,
+                            comment: registro.comment
+                        });
+                        console.log("Documento atualizado com ID: ", id);
+
+                        registro.status = "success";
+                        renderizarRegistros();
+
+                        if (novoValor === "true") {
+                            comentarioAtualId = id;
+                            commentModalTextarea.value = oldComment;
+                            abrirComentarioModalEscrita();
+                        } else {
+                            setTimeout(() => {
+                                delete registro.status;
+                                renderizarRegistros();
+                            }, 1000);
+                            showTemporaryMessage('Status alterado para Sucesso!', 'green');
+                        }
+                    } catch (e) {
+                        console.error("Erro ao atualizar documento: ", e);
+                        registro.status = undefined;
+                        registro.error = valorAtual;
+                        registro.comment = oldComment;
+                        renderizarRegistros();
+                        showTemporaryMessage('Erro ao alterar status.', 'red');
+                    }
+                }
+            }
+
+            /**
+             * Salva o comentário do modal na atualização diária atual no Firestore.
+             */
+            async function salvarComment() {
+                const texto = commentModalTextarea.value.trim();
+                const registro = registros.find(r => r.id === comentarioAtualId);
+
+                if (registro) {
+                    const oldComment = registro.comment;
+                    registro.comment = texto;
+                    registro.status = "loading";
+                    renderizarRegistros();
+                    showTemporaryMessage('Salvando comentário...', 'blue');
+
+                    try {
+                        await updateDoc(doc(db, `artifacts/${appId}/atualizacoes_publicas`, comentarioAtualId), {
+                            comment: texto
+                        });
+                        console.log("Comentário atualizado para o documento: ", comentarioAtualId);
+
+                        registro.status = "success";
+                        renderizarRegistros();
+                        fecharComentarioModal();
+                        setTimeout(() => {
+                            delete registro.status;
+                            renderizarRegistros();
+                        }, 1000);
+                        showTemporaryMessage('Comentário salvo!', 'green');
+                    } catch (e) {
+                        console.error("Erro ao salvar comentário: ", e);
+                        registro.status = undefined;
+                        registro.comment = oldComment;
+                        renderizarRegistros();
+                        showTemporaryMessage('Erro ao salvar comentário.', 'red');
+                    }
+                }
+            }
+
+            /**
+             * Carrega as atualizações diárias do Firestore para o dia atual.
+             */
+            async function carregarAtualizacoes() {
+                try {
+                    const updatesColRef = collection(db, `artifacts/${appId}/atualizacoes_publicas`);
+                    const q = query(updatesColRef);
+
+                    const querySnapshot = await getDocs(q);
+                    const loadedRegistros = [];
+                    const hoje = new Date();
+                    hoje.setHours(0, 0, 0, 0);
+
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        const docDate = new Date(data.data + 'T00:00:00');
+                        docDate.setHours(0, 0, 0, 0);
+
+                        if (docDate.getTime() === hoje.getTime()) {
+                            loadedRegistros.push({ id: doc.id, ...data });
+                        }
+                    });
+                    registros = loadedRegistros;
+                    renderizarRegistros();
+                    mostrarConteudo();
+                } catch (e) {
+                    console.error("Erro ao carregar atualizações do Firestore: ", e);
+                    showTemporaryMessage('Erro ao carregar atualizações.', 'red');
+                    mostrarConteudo();
+                }
+            }
+
+            // --- NOVO: Funções para Gerenciamento de Itens do Menu ---
+
+            /**
+             * Carrega os itens do menu do Firestore e os renderiza na sidebar e no modal de gerenciamento.
+             */
+            async function carregarMenu() {
+                menuAtualizacoes.innerHTML = ''; // Limpa o menu principal
+                menuItemsList.innerHTML = ''; // Limpa a lista do modal de gerenciamento
+                menuItems = []; // Limpa o array local
+
+                try {
+                    const menuColRef = collection(db, `artifacts/${appId}/menu_definitions`);
+                    const q = query(menuColRef);
+                    const querySnapshot = await getDocs(q);
+
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        menuItems.push({ id: doc.id, ...data });
+                    });
+
+                    // Renderiza os botões no menu lateral
+                    if (menuItems.length === 0) {
+                        menuAtualizacoes.innerHTML = `
+                            <li class="text-gray-500 text-center py-4">Nenhum item de menu cadastrado.</li>
+                        `;
+                    } else {
+                        menuItems.forEach(item => {
+                            const btn = document.createElement("button");
+                            btn.textContent = item.titulo;
+                            btn.className = "w-full text-left bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75";
+                            btn.addEventListener('click', async () => {
+                                await criarAtualizacao(item.titulo, item.descricao); // Passa a descrição
+                                fecharMenu();
+                            });
+                            menuAtualizacoes.appendChild(btn);
+                        });
+                    }
+
+                    // Renderiza a lista no modal de gerenciamento
+                    renderMenuManagementList();
+
+                } catch (e) {
+                    console.error("Erro ao carregar itens do menu: ", e);
+                    showTemporaryMessage('Erro ao carregar itens do menu.', 'red');
+                }
+            }
+
+            /**
+             * Renderiza a lista de itens do menu no modal de gerenciamento.
+             */
+            function renderMenuManagementList() {
+                menuItemsList.innerHTML = '';
+                if (menuItems.length === 0) {
+                    menuItemsList.innerHTML = `
+                        <p class="text-gray-500 text-center py-4">Nenhum item de menu para gerenciar.</p>
+                    `;
+                    return;
+                }
+
+                menuItems.forEach(item => {
+                    const listItem = document.createElement('div');
+                    listItem.className = 'flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg shadow-sm';
+                    listItem.innerHTML = `
+                        <div>
+                            <p class="font-semibold text-gray-800">${item.titulo}</p>
+                            <p class="text-sm text-gray-600 truncate">${item.descricao}</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="edit-menu-item-btn text-blue-600 hover:text-blue-800 transition duration-200" data-id="${item.id}" title="Editar Item">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="delete-menu-item-btn text-red-600 hover:text-red-800 transition duration-200" data-id="${item.id}" title="Remover Item">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    `;
+                    menuItemsList.appendChild(listItem);
+                });
+
+                // Adiciona event listeners aos botões de edição e exclusão no modal de gerenciamento
+                document.querySelectorAll('.edit-menu-item-btn').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const id = e.currentTarget.dataset.id;
+                        editMenuItem(id);
+                    });
+                });
+
+                document.querySelectorAll('.delete-menu-item-btn').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const id = e.currentTarget.dataset.id;
+                        openConfirmModal(id, 'menu'); // Passa o tipo para o modal de confirmação
+                    });
+                });
+            }
+
+            /**
+             * Adiciona um novo item ao menu ou atualiza um existente no Firestore.
+             * @param {Event} event - O evento de submit do formulário.
+             */
+            async function addOrUpdateMenuItem(event) {
+                event.preventDefault();
+                const titulo = menuItemTitleInput.value.trim();
+                const descricao = menuItemDescriptionInput.value.trim();
+                const id = editingMenuItemIdInput.value;
+
+                if (!titulo || !descricao) {
+                    showTemporaryMessage('Por favor, preencha o título e a descrição do item do menu.', 'red');
+                    return;
+                }
+
+                if (id) { // Editando item existente
+                    const itemToUpdate = menuItems.find(item => item.id === id);
+                    if (itemToUpdate) {
+                        itemToUpdate.titulo = titulo;
+                        itemToUpdate.descricao = descricao;
+                        showTemporaryMessage('Atualizando item do menu...', 'blue');
+                        try {
+                            await updateDoc(doc(db, `artifacts/${appId}/menu_definitions`, id), {
+                                titulo: titulo,
+                                descricao: descricao
+                            });
+                            showTemporaryMessage('Item do menu atualizado com sucesso!', 'green');
+                            await carregarMenu(); // Recarrega o menu e a lista de gerenciamento
+                            resetMenuItemForm();
+                        } catch (e) {
+                            console.error("Erro ao atualizar item do menu: ", e);
+                            showTemporaryMessage('Erro ao atualizar item do menu.', 'red');
+                        }
+                    }
+                } else { // Adicionando novo item
+                    const newItem = {
+                        titulo: titulo,
+                        descricao: descricao
+                    };
+                    showTemporaryMessage('Adicionando novo item ao menu...', 'blue');
+                    try {
+                        await addDoc(collection(db, `artifacts/${appId}/menu_definitions`), newItem);
+                        showTemporaryMessage('Novo item do menu adicionado com sucesso!', 'green');
+                        await carregarMenu(); // Recarrega o menu e a lista de gerenciamento
+                        resetMenuItemForm();
+                    } catch (e) {
+                        console.error("Erro ao adicionar novo item do menu: ", e);
+                        showTemporaryMessage('Erro ao adicionar novo item do menu.', 'red');
+                    }
+                }
+            }
+
+            /**
+             * Preenche o formulário do item do menu para edição.
+             * @param {string} id - O ID do item do menu a ser editado.
+             */
+            function editMenuItem(id) {
+                const itemToEdit = menuItems.find(item => item.id === id);
+                if (itemToEdit) {
+                    menuItemTitleInput.value = itemToEdit.titulo;
+                    menuItemDescriptionInput.value = itemToEdit.descricao;
+                    editingMenuItemIdInput.value = itemToEdit.id;
+                    menuFormSubtitle.textContent = 'Editar Item do Menu';
+                    editingMenuItem = itemToEdit; // Define o item que está sendo editado
+                }
+            }
+
+            /**
+             * Remove um item do menu do Firestore.
+             * @param {string} id - O ID do item do menu a ser removido.
+             */
+            async function deleteMenuItem(id) {
+                showTemporaryMessage('Removendo item do menu...', 'blue');
+                try {
+                    await deleteDoc(doc(db, `artifacts/${appId}/menu_definitions`, id));
+                    showTemporaryMessage('Item do menu removido com sucesso!', 'green');
+                    await carregarMenu(); // Recarrega o menu e a lista de gerenciamento
+                } catch (e) {
+                    console.error("Erro ao remover item do menu: ", e);
+                    showTemporaryMessage('Erro ao remover item do menu.', 'red');
+                }
+            }
+
+            /**
+             * Reseta o formulário de item do menu.
+             */
+            function resetMenuItemForm() {
+                menuItemForm.reset();
+                editingMenuItemIdInput.value = '';
+                menuFormSubtitle.textContent = 'Adicionar Novo Item';
+                editingMenuItem = null;
+            }
+
+            // --- Manipulação de Modais ---
+
+            /**
+             * Abre o modal de comentário para escrita.
+             */
+            function abrirComentarioModalEscrita() {
+                commentModalTextarea.value = "";
+                commentModalTextarea.disabled = false;
+                salvarCommentBtn.classList.remove('hidden');
+                commentModalOverlay.classList.remove('hidden');
+                setTimeout(() => {
+                    commentModalContent.classList.remove('scale-95', 'opacity-0');
+                    commentModalContent.classList.add('scale-100', 'opacity-100');
+                }, 50);
+                isCommentModalReadOnly = false;
+            }
+
+            /**
+             * Abre o modal de comentário para leitura.
+             * @param {string} comentario - O texto do comentário a ser exibido.
+             */
+            function abrirComentarioModalLeitura(comentario) {
+                commentModalTextarea.value = comentario;
+                commentModalTextarea.disabled = true;
+                salvarCommentBtn.classList.add('hidden');
+                commentModalOverlay.classList.remove('hidden');
+                setTimeout(() => {
+                    commentModalContent.classList.remove('scale-95', 'opacity-0');
+                    commentModalContent.classList.add('scale-100', 'opacity-100');
+                }, 50);
+                isCommentModalReadOnly = true;
+            }
+
+            /**
+             * Fecha o modal de comentário.
+             */
+            function fecharComentarioModal() {
+                commentModalContent.classList.remove('scale-100', 'opacity-100');
+                commentModalContent.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    commentModalOverlay.classList.add('hidden');
+                    commentModalTextarea.value = "";
+                    comentarioAtualId = null;
+                }, 300);
+            }
+
+            /**
+             * Abre o modal de gerenciamento de itens do menu.
+             */
+            function openMenuManagementModal() {
+                menuManagementModal.classList.remove('hidden');
+                setTimeout(() => {
+                    menuManagementModalContent.classList.remove('scale-95', 'opacity-0');
+                    menuManagementModalContent.classList.add('scale-100', 'opacity-100');
+                }, 50);
+                resetMenuItemForm(); // Reseta o formulário ao abrir
+                renderMenuManagementList(); // Garante que a lista esteja atualizada
+            }
+
+            /**
+             * Fecha o modal de gerenciamento de itens do menu.
+             */
+            function closeMenuManagementModal() {
+                menuManagementModalContent.classList.remove('scale-100', 'opacity-100');
+                menuManagementModalContent.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    menuManagementModal.classList.add('hidden');
+                    resetMenuItemForm(); // Reseta o formulário ao fechar
+                }, 300);
+            }
+
+            /**
+             * Abre o modal de histórico de atualizações.
+             */
+            async function openHistoryModal() {
+                historyModal.classList.remove('hidden');
+                setTimeout(() => {
+                    historyModalContent.classList.remove('scale-95', 'opacity-0');
+                    historyModalContent.classList.add('scale-100', 'opacity-100');
+                }, 50);
+                await carregarHistoricoAtualizacoes(); // Carrega e renderiza a tabela do histórico
+            }
+
+            /**
+             * Fecha o modal de histórico de atualizações.
+             */
+            function closeHistoryModal() {
+                historyModalContent.classList.remove('scale-100', 'opacity-100');
+                historyModalContent.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    historyModal.classList.add('hidden');
+                    historyTableBody.innerHTML = ''; // Limpa a tabela ao fechar
+                }, 300);
+            }
+
+            /**
+             * Carrega todas as atualizações do Firestore para o histórico e as renderiza na tabela.
+             */
+            async function carregarHistoricoAtualizacoes() {
+                historyTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="p-4 text-center text-gray-500">
+                            <i class="fas fa-spinner fa-spin mr-2"></i> Carregando histórico...
+                        </td>
+                    </tr>
+                `;
+                historicalUpdates = []; // Limpa o array do histórico
+
+                try {
+                    const updatesColRef = collection(db, `artifacts/${appId}/atualizacoes_publicas`);
+                    const q = query(updatesColRef);
+
+                    const querySnapshot = await getDocs(q);
+                    querySnapshot.forEach((doc) => {
+                        historicalUpdates.push({ id: doc.id, ...doc.data() });
+                    });
+
+                    // Ordena do mais recente para o mais antigo (data e depois hora)
+                    historicalUpdates.sort((a, b) => {
+                        const dateA = new Date(`${a.data}T${a.hora}`);
+                        const dateB = new Date(`${b.data}T${b.hora}`);
+                        return dateB.getTime() - dateA.getTime(); // Mais recente primeiro
+                    });
+
+                    renderizarHistoricoTabela();
+
+                } catch (e) {
+                    console.error("Erro ao carregar histórico de atualizações: ", e);
+                    historyTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="p-4 text-center text-red-500">
+                                Erro ao carregar histórico.
+                            </td>
+                        </tr>
+                    `;
+                    showTemporaryMessage('Erro ao carregar histórico.', 'red');
+                }
+            }
+
+            /**
+             * Renderiza os dados do histórico na tabela.
+             */
+            function renderizarHistoricoTabela() {
+                historyTableBody.innerHTML = ''; // Limpa a tabela antes de renderizar
+
+                if (historicalUpdates.length === 0) {
+                    historyTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="p-4 text-center text-gray-500">
+                                Nenhum histórico de atualização encontrado.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                historicalUpdates.forEach(item => {
+                    const isErro = item.error === "true" || item.error === true;
+                    const statusIconHtml = isErro
+                        ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="red" class="size-5 inline-block align-middle mr-1">
+                            <path fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14Zm2.78-4.22a.75.75 0 0 1-1.06 0L8 9.06l-1.72 1.72a.75.75 0 1 1-1.06-1.06L6.94 8 5.22 6.28a.75.75 0 0 1 1.06-1.06L8 6.94l1.72-1.72a.75.75 0 1 1 1.06 1.06L9.06 8l1.72 1.72a.75.75 0 0 1 0 1.06Z" clip-rule="evenodd" />
+                           </svg>Erro`
+                        : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="green" class="size-5 inline-block align-middle mr-1">
+                            <path fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14Zm3.844-8.791a.75.75 0 0 0-1.188-.918l-3.7 4.79-1.649-1.833a.75.75 0 1 0-1.114 1.004l2.25 2.5a.75.75 0 0 0 1.15-.043l4.25-5.5Z" clip-rule="evenodd" />
+                           </svg>Sucesso`;
+
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50';
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formatarData(item.data)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formatarHora(item.hora)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.assunto}</td>
+                        <td class="px-6 py-4 whitespace-normal text-sm text-gray-700">${item.descricao || ''}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${statusIconHtml}</td>
+                        <td class="px-6 py-4 whitespace-normal text-sm text-gray-700">${item.comment || ''}</td>
+                    `;
+                    historyTableBody.appendChild(row);
+                });
+            }
+
+            /**
+             * Exporta os dados do histórico para um arquivo Excel (CSV).
+             */
+            function exportarParaExcel() {
+                if (historicalUpdates.length === 0) {
+                    showTemporaryMessage('Não há dados para exportar.', 'red');
+                    return;
+                }
+
+                let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Adiciona BOM para caracteres especiais
+                const headers = ["Data", "Hora", "Assunto", "Descrição", "Status", "Comentário"];
+                csvContent += headers.join(";") + "\n"; // Usa ponto e vírgula como delimitador
+
+                historicalUpdates.forEach(item => {
+                    const statusText = (item.error === "true" || item.error === true) ? "Erro" : "Sucesso";
+                    const row = [
+                        formatarData(item.data),
+                        formatarHora(item.hora),
+                        item.assunto,
+                        item.descricao || '',
+                        statusText,
+                        item.comment || ''
+                    ];
+                    csvContent += row.map(field => `"${field.replace(/"/g, '""')}"`).join(";") + "\n"; // Aspas para campos com vírgulas/pontos e vírgulas
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "historico_atualizacoes.csv");
+                document.body.appendChild(link); // Required for Firefox
+                link.click();
+                document.body.removeChild(link); // Clean up
+                showTemporaryMessage('Histórico exportado para Excel!', 'green');
+            }
+
+            /**
+             * Abre o modal de confirmação para remoção.
+             * @param {string} id - O ID da atualização/item a ser removida.
+             * @param {'daily'|'menu'} type - O tipo de item a ser removido.
+             */
+            function openConfirmModal(id, type) {
+                if (type === 'daily') {
+                    updateIdToDelete = id;
+                    menuItemIdToDelete = null;
+                } else if (type === 'menu') {
+                    menuItemIdToDelete = id;
+                    updateIdToDelete = null;
+                }
+                confirmModal.classList.remove('hidden');
+                setTimeout(() => {
+                    confirmModalContent.classList.remove('scale-95', 'opacity-0');
+                    confirmModalContent.classList.add('scale-100', 'opacity-100');
+                }, 50);
+            }
+
+            /**
+             * Fecha o modal de confirmação.
+             */
+            function closeConfirmModal() {
+                confirmModalContent.classList.remove('scale-100', 'opacity-100');
+                confirmModalContent.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    confirmModal.classList.add('hidden');
+                    updateIdToDelete = null;
+                    menuItemIdToDelete = null;
+                }, 300);
+            }
+
+            /**
+             * Exibe uma mensagem temporária no canto superior direito da tela.
+             * @param {string} message - A mensagem a ser exibida.
+             * @param {'green'|'red'|'blue'} type - O tipo da mensagem para estilização.
+             */
+            function showTemporaryMessage(message, type) {
+                const messageBox = document.createElement('div');
+                messageBox.className = `fixed top-5 right-5 p-4 rounded-lg shadow-lg text-white text-sm font-semibold transition-all duration-300 transform translate-x-full opacity-0 z-[1000]`;
+
+                if (type === 'green') {
+                    messageBox.classList.add('bg-green-500');
+                } else if (type === 'red') {
+                    messageBox.classList.add('bg-red-500');
+                } else if (type === 'blue') {
+                    messageBox.classList.add('bg-blue-500');
+                }
+
+                messageBox.textContent = message;
+                document.body.appendChild(messageBox);
+
+                // Animação de entrada
+                setTimeout(() => {
+                    messageBox.classList.remove('translate-x-full', 'opacity-0');
+                    messageBox.classList.add('translate-x-0', 'opacity-100');
+                }, 100);
+
+                // Animação de saída e remoção
+                setTimeout(() => {
+                    messageBox.classList.remove('translate-x-0', 'opacity-100');
+                    messageBox.classList.add('translate-x-full', 'opacity-0');
+                    messageBox.addEventListener('transitionend', () => messageBox.remove());
+                }, 3000); // Mensagem visível por 3 segundos
+            }
+
+            // --- Event Listeners Globais ---
+
+            addUpdateBtn.addEventListener('click', abrirMenu);
+            closeSidebarBtn.addEventListener('click', fecharMenu);
+            overlay.addEventListener('click', fecharMenu);
+
+            salvarCommentBtn.addEventListener('click', salvarComment);
+            closeCommentModalBtn.addEventListener('click', fecharComentarioModal);
+
+            manageMenuBtn.addEventListener('click', openMenuManagementModal);
+            closeMenuManagementModalBtn.addEventListener('click', closeMenuManagementModal);
+            menuItemForm.addEventListener('submit', addOrUpdateMenuItem);
+            cancelMenuItemBtn.addEventListener('click', resetMenuItemForm);
+
+            viewHistoryBtn.addEventListener('click', openHistoryModal); // Event listener para o botão de histórico
+            closeHistoryModalBtn.addEventListener('click', closeHistoryModal); // Event listener para fechar o histórico
+            exportExcelBtn.addEventListener('click', exportarParaExcel); // Event listener para exportar
+
+            confirmCancelBtn.addEventListener('click', closeConfirmModal);
+            confirmDeleteBtn.addEventListener('click', async () => {
+                if (updateIdToDelete !== null) {
+                    await deletar(updateIdToDelete); // Deleta registro diário
+                } else if (menuItemIdToDelete !== null) {
+                    await deleteMenuItem(menuItemIdToDelete); // Deleta item do menu
+                }
+                closeConfirmModal();
+            });
+
+            // Fechar modais ao clicar fora
+            commentModalOverlay.addEventListener('click', (e) => {
+                if (e.target === commentModalOverlay && !isCommentModalReadOnly) {
+                    fecharComentarioModal();
+                }
+            });
+            confirmModal.addEventListener('click', (e) => {
+                if (e.target === confirmModal) {
+                    closeConfirmModal();
+                }
+            });
+            menuManagementModal.addEventListener('click', (e) => {
+                if (e.target === menuManagementModal) {
+                    closeMenuManagementModal();
+                }
+            });
+            historyModal.addEventListener('click', (e) => {
+                if (e.target === historyModal) {
+                    closeHistoryModal();
+                }
+            });
+
+            // Chamadas iniciais
+            // carregarMenu() e carregarAtualizacoes() já são chamadas após o setTimeout inicial
+        });
+    </script>
+</body>
+</html>
