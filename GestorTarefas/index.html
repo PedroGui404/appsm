@@ -82,7 +82,8 @@
             display: inline-block;
         }
         .expected-date-chip { background-color: #e0e7ff; color: #4338ca; } /* Indigo 100 / Indigo 700 */
-        .expected-date-today-chip { background-color: #fee2e2; color: #991b1b; } /* Red for today's date */
+        .expected-date-today-chip { background-color: #fef3c7; color: #92400e; } /* Orange for today's date */
+        .expected-date-past-chip { background-color: #fee2e2; color: #991b1b; } /* Red for past date */
         .completed-date-chip { background-color: #d1fae5; color: #065f46; } /* Green 200 / Green 800 (similar to status-concluida but distinct) */
 
 
@@ -371,6 +372,7 @@
     <div id="main-app-container" class="container">
         <div class="p-6 border-b border-gray-200">
             <h1 class="text-3xl font-bold text-gray-800 mb-1">Gerenciador de Tarefas</h1>
+            <p class="text-gray-600">Organize suas tarefas por perfil.</p>
         </div>
 
         <div id="profile-selection" class="p-6 bg-gray-50 border-b border-gray-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -603,21 +605,21 @@
         const profilesData = [
             {
                 id: 'bianca',
-                name: 'Bianca Anjos',
-                role: 'Analista Sênior',
-                photo: 'bianca.png'
-            },
-            {
-                id: 'gizelle',
-                name: 'Gizelle Mamede',
-                role: 'Analista Júnior',
-                photo: 'gizelle.png'
+                name: 'Bianca',
+                role: 'Gerente de Projetos',
+                photo: 'https://placehold.co/80x80/a78bfa/ffffff?text=BI'
             },
             {
                 id: 'pedro',
-                name: 'Pedro Amorim',
-                role: 'Estagiário',
-                photo: 'pedro.png'
+                name: 'Pedro',
+                role: 'Desenvolvedor Sênior',
+                photo: 'https://placehold.co/80x80/60a5fa/ffffff?text=PE'
+            },
+            {
+                id: 'gizelle',
+                name: 'Gizelle',
+                role: 'Designer UX/UI',
+                photo: 'https://placehold.co/80x80/f472b6/ffffff?text=GI'
             }
         ];
 
@@ -671,6 +673,14 @@
         function isToday(dateString) {
             if (!dateString) return false;
             return dateString === getTodayDateString();
+        }
+
+        // Check if a date string is in the past
+        function isPastDate(dateString) {
+            if (!dateString) return false;
+            const today = new Date(getTodayDateString()); // Normalize to start of today
+            const checkDate = new Date(dateString);
+            return checkDate.getTime() < today.getTime();
         }
 
         // Show modal (reusable for all modals)
@@ -911,7 +921,7 @@
                         <p class="text-gray-600 text-sm">${task.description || 'Sem descrição'}</p>
                         <div class="flex items-center flex-wrap gap-2 mt-2">
                             <span class="priority-chip priority-${task.priority}" data-priority="${task.priority}">${getDisplayPriority(task.priority)}</span>
-                            ${task.expectedCompletionDate ? `<span class="date-chip expected-date-chip ${isToday(task.expectedCompletionDate) ? 'expected-date-today-chip' : ''}">Concluir até: ${formatDateDisplay(task.expectedCompletionDate)}</span>` : ''}
+                            ${task.expectedCompletionDate ? `<span class="date-chip ${isToday(task.expectedCompletionDate) ? 'expected-date-today-chip' : (isPastDate(task.expectedCompletionDate) ? 'expected-date-past-chip' : 'expected-date-chip')}">Concluir até: ${formatDateDisplay(task.expectedCompletionDate)}</span>` : ''}
                             ${task.status === 'concluida' && task.dateCompleted ? `<span class="date-chip completed-date-chip">Concluída em: ${formatDateDisplay(task.dateCompleted)}</span>` : ''}
                         </div>
                     </div>
@@ -1070,7 +1080,7 @@
                     const noteId = e.currentTarget.dataset.id;
                     showConfirmModal("Tem certeza que deseja excluir esta nota?", async () => {
                         await deleteNote(noteId);
-                        hideModal(confirmModal); // Adicionado: Esconde o modal de confirmação após a ação
+                        hideModal(confirmModal); // Esconde o modal de confirmação após a ação
                     });
                 });
             });
